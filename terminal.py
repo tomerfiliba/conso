@@ -330,9 +330,10 @@ class Terminal(object):
 if __name__ == "__main__":
     with Terminal() as t:
         t.draw_box(5, 5, 20, 10)
+        t.draw_box(65, 5, 1, 1)
         t.cursor.write("hello there", (8, 8))
-        #while True:
-        #    print t.get_event()
+        while True:
+            print t.get_event()
 
 
 
