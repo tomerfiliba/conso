@@ -1,6 +1,8 @@
 import conso
 
 
+
+
 class FiltersBox(conso.Module):
     filters = conso.ModuleAttribute(conso.OList)
     

@@ -120,6 +120,8 @@ class Terminal(object):
         return sys.getdefaultencoding()
     
     def _tty_set_cbreak(self, when = termios.TCSAFLUSH):
+        assert not hasattr(self, "_orig_tty_mode")
+        self._orig_tty_mode = termios.tcgetattr(self._fd)
         mode = termios.tcgetattr(self._fd)
         mode[termios.LFLAG] = mode[termios.LFLAG] & ~(termios.ECHO | termios.ICANON)
         mode[termios.CC][termios.VMIN] = 1
@@ -127,9 +129,8 @@ class Terminal(object):
         termios.tcsetattr(self._fd, when, mode)
     
     def _tty_reset_cbreak(self, when = termios.TCSAFLUSH):
-        mode = termios.tcgetattr(self._fd)
-        mode[termios.LFLAG] = mode[termios.LFLAG] & (termios.ECHO | termios.ICANON)
-        termios.tcsetattr(self._fd, when, mode)
+        termios.tcsetattr(self._fd, when, self._orig_tty_mode)
+        del self._orig_tty_mode
 
     def _write(self, data):
         data = data.encode(self.encoding)
@@ -330,10 +331,10 @@ class Terminal(object):
 if __name__ == "__main__":
     with Terminal() as t:
         t.draw_box(5, 5, 20, 10)
-        t.draw_box(65, 5, 1, 1)
+        #t.draw_box(65, 5, 1, 1)
         t.cursor.write("hello there", (8, 8))
-        while True:
-            print t.get_event()
+        #while True:
+        #    print t.get_event()
 
 
 
