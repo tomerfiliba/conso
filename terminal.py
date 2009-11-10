@@ -30,6 +30,14 @@ Resized = Resized("window resized")
 _termios_LFLAG = 3
 _termios_CC = 6
 
+class Bunch(dict):
+    def __getattr__(self, name):
+        try:
+            return self[name]
+        except KeyError:
+            raise AttributeError(name)
+
+
 class Terminal(object):
     MAX_IO_CHUNK = 16000
     
@@ -39,6 +47,7 @@ class Terminal(object):
             fd = fd.fileno()
         self.fd = fd
         self.encoding = self._get_encoding()
+        self.keys = Bunch()
         self._exec_in_tty = exec_in_tty
         self._termtype = termtype
         # state
@@ -91,6 +100,12 @@ class Terminal(object):
     def _leave_cbreak(self):
         termios.tcsetattr(self.fd, termios.TCSAFLUSH, self._orig_termios_mode)
     
+    def _enter_keypad(self):
+        self._write(curses.tigetstr("smkx"))
+
+    def _leave_keypad(self):
+        self._write(curses.tigetstr("rmkx"))
+    
     @classmethod
     def _init_colors(cls, ansi_cmd, native_cmd):
         ansi = ["black", "red", "green", "yellow", "blue", "magenta", "cyan", "white"]
@@ -121,6 +136,25 @@ class Terminal(object):
         self.RESET_ATTRS = self._tigetstr("sgr0")
         self.FG_COLORS = self._init_colors("setaf", "setf")
         self.BG_COLORS = self._init_colors("setab", "setb")
+        self._init_keys()
+
+    def _init_keys(self):
+        self.keys.left_arrow = self._tigetstr("kcub1")
+        self.keys.right_arrow = self._tigetstr("kcuf1")
+        self.keys.up_arrow = self._tigetstr("kcuu1")
+        self.keys.down_arrow = self._tigetstr("kcud1")
+        self.keys.insert = None
+        self.keys.delete = self._tigetstr("kdch1")
+        self.keys.home = self._tigetstr("khome")
+        self.keys.end = self._tigetstr("kend")
+        self.keys.page_up = self._tigetstr("kpp")
+        self.keys.page_down = self._tigetstr("knp")
+        self.keys.enter = curses.tigetstr("kent")
+        self.keys.backspace = None
+        self.keys.tab = None
+        self.keys.ctrl = Bunch()
+        self.keys.alt = Bunch()
+        self.keys.ctrl_alt = Bunch()
 
     @classmethod
     def _get_size(cls):
@@ -187,7 +221,7 @@ class Terminal(object):
         if not os.isatty(self.fd):
             if self._exec_in_tty:
                 os.execl("/usr/bin/gnome-terminal", "-t", "python shell", "-x", 
-                    "/usr/bin/python", "-i", __file__, *sys.argv[1:])
+                    "/usr/bin/python", "-i", *sys.argv)
             else:
                 raise ValueError("fd must be a tty")
 
@@ -195,6 +229,7 @@ class Terminal(object):
         self._orig_sigwinch = signal.signal(signal.SIGWINCH, self._sigwinch)
         self._sigwinch()
         self._enter_cbreak()
+        self._enter_keypad()
         self.clear_screen()
         self.reset_attrs()
         self.hide_cursor()
@@ -204,6 +239,7 @@ class Terminal(object):
         if not self._initialized:
             raise ValueError("not initialized")
         signal.signal(signal.SIGWINCH, self._orig_sigwinch)
+        self._leave_keypad()
         self._leave_cbreak()
         self.show_cursor()
         self.reset_attrs()
@@ -225,13 +261,13 @@ class Terminal(object):
     def get_size(self):
         return self._width, self._height
 
-    def _process_raw_event(self, data):
+    def _process_raw_events(self, data):
         if len(data) == 1:
-            return Char(data)
+            return Char(data),
         elif len(data) > 1 and data[0] == "\x1b":
-            return Esc(data[1:])
+            return Esc(data[1:]),
         else:
-            return Raw(data)
+            return [Char(ch) for ch in data]
 
     def get_event(self, timeout = None):
         if not self._events:
@@ -239,8 +275,8 @@ class Terminal(object):
         data = self._read_all()
         output = self._decoder.decode(data)
         if output:
-            evt = self._process_raw_event(output)
-            self._events.append(evt)
+            evts = self._process_raw_events(output)
+            self._events.extend(evts)
         
         # note that we might have a queued Resized event here as well
         if self._events:
@@ -259,7 +295,8 @@ class Terminal(object):
         if changed:
             caps.append(self.RESET_ATTRS)
             caps.extend(cap for cap in self._curr_attrs.values() if cap)
-        data = "".join(caps) + text
+        text2 = [ch if ord(ch) >= 32 else u"\ufffd" for ch in text]
+        data = "".join(caps) + "".join(text2)
         self._write(data)
 
     def set_attrs(self, fg = None, bg = None, bold = None, underlined = None, inversed = None):
@@ -280,7 +317,9 @@ class Terminal(object):
         self._new_attrs = {}
         self._write(self.RESET_ATTRS)
     
-    def get_canvas(self, x, y, width, height):
+    def get_canvas(self, x = 0, y = 0, width = None, height = None):
+        width = self._width - x if width is None else width
+        height = self._height - y if height is None else height
         return Canvas(self, x, y, width, height)
 
 
@@ -292,6 +331,9 @@ class Canvas(object):
         self.width = width
         self.height = height
         self.attrs = {}
+    
+    def __repr__(self):
+        return "Canvas(%r, %r, %rx%r)" % (self.x, self.y, self.width, self.height)
     
     def write(self, text, x, y):
         if y > self.height or x > self.width:
@@ -315,21 +357,28 @@ class Canvas(object):
         self.write(u"\u2510", x+w, y)
         self.write(u"\u2514", x, y+h)
         self.write(u"\u2518", x+w, y+h)
-    def draw_borders(self):
+    def draw_border(self):
         self.draw_box(0, 0, self.width-1, self.height)
+        return self.subcanvas(1, 1, self.width - 1, self.height - 1)
+    
+    def subcanvas(self, x = 0, y = 0, width = None, height = None):
+        width = self.width - x if width is None else width
+        height = self.height - y if height is None else height
+        #return self.terminal.get_canvas(self.x + x, self.y + y, width, height)
+        return Canvas(self, x, y, width, height)
 
 
-if __name__ == "__main__":
-    with Terminal() as t:
-        c1 = t.get_canvas(12, 12, 50, 10)
-        c2 = t.get_canvas(2, 2, 7, 7)
-        c1.draw_borders()
-        c2.draw_borders()
-        c1.set_attrs(fg = "red")
-        c2.set_attrs(fg = "yellow", bold = True)
-        c1.write("hello", 1, 1)
-        c2.write("worldxxxx", 1, 1)
-        
+#if __name__ == "__main__":
+#    with Terminal() as t:
+#        c1 = t.get_canvas(12, 12, 50, 10)
+#        c2 = t.get_canvas(2, 2, 7, 7)
+#        c1.draw_border()
+#        c2.draw_border()
+#        c1.set_attrs(fg = "red")
+#        c2.set_attrs(fg = "yellow", bold = True)
+#        c1.write("hello", 1, 1)
+#        c2.write("worldxxxx", 1, 1)
+
 
 
 
