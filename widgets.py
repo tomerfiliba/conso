@@ -83,6 +83,27 @@ class SimpleListModel(ListModel):
     def getitem(self, index):
         return Label(str(self.seq[index]))
 
+class HLayout(Widget):
+    def __init__(self, *widgets):
+        self.widgets = widgets
+        self.focused = widgets[0]
+    def get_min_size(self):
+        sizes = [w.get_min_size() for w in self.widgets]
+        w = sum(s[0] for s in sizes)
+        h = max(s[1] for s in sizes)
+        return w, h
+    def get_desired_size(self, parent_canvas):
+        pass
+    def render(self, canvas):
+        per_item_width = canvas.width / len(self.widgets)
+        offx = 0
+        for w in self.widgets:
+            canvas2 = canvas.subcanvas(offx, 0, per_item_width, canvas.height)
+            w.render(canvas2)
+    def on_event(self, evt):
+        self.focused.on_event(evt)
+
+
 class Application(object):
     def __init__(self, root):
         self.root = root
@@ -104,10 +125,13 @@ class Application(object):
             else:
                 self.root.on_event(evt)
 
+
 if __name__ == "__main__":
     m = SimpleListModel(["hi", "ther\ne", "world", "zolrf"] * 10)
-    lb = ListBox(m)
-    app = Application(lb)
+    lb1 = ListBox(m)
+    lb2 = ListBox(m)
+    root = HLayout(lb1, lb2)
+    app = Application(root)
     app.main()
 
 
