@@ -8,27 +8,13 @@ import termios
 import locale
 import re
 import codecs
+import tty
+from keys import TerminalKeys
 
 
-class Event(object):
-    __slots__ = ["value"]
-    def __init__(self, value):
-        self.value = value
-    def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.value)
-
-class Char(Event):
+class Resized(object):
     __slots__ = []
-class Esc(Event):
-    __slots__ = []
-class Raw(Event):
-    __slots__ = []
-class Resized(Event):
-    __slots__ = []
-Resized = Resized("window resized")
-
-_termios_LFLAG = 3
-_termios_CC = 6
+Resized = Resized()
 
 class Bunch(dict):
     def __getattr__(self, name):
@@ -41,7 +27,7 @@ class Bunch(dict):
 class Terminal(object):
     MAX_IO_CHUNK = 16000
     
-    def __init__(self, fd = sys.stdout, termtype = None, exec_in_tty = True):
+    def __init__(self, fd = sys.stdout, termtype = None, exec_in_tty = True, raw_mode = True):
         if hasattr(fd, "fileno"):
             fd.flush()
             fd = fd.fileno()
@@ -50,6 +36,7 @@ class Terminal(object):
         self.keys = Bunch()
         self._exec_in_tty = exec_in_tty
         self._termtype = termtype
+        self._raw_mode = raw_mode
         # state
         self._events = []
         self._decoder = codecs.getincrementaldecoder(self.encoding)("replace")
@@ -91,11 +78,10 @@ class Terminal(object):
     
     def _enter_cbreak(self):
         self._orig_termios_mode = termios.tcgetattr(self.fd)
-        mode = termios.tcgetattr(self.fd)
-        mode[_termios_LFLAG] = mode[_termios_LFLAG] & ~(termios.ECHO | termios.ICANON)
-        mode[_termios_CC][termios.VMIN] = 1
-        mode[_termios_CC][termios.VTIME] = 0
-        termios.tcsetattr(self.fd, termios.TCSAFLUSH, mode)
+        if self._raw_mode:
+            tty.setraw(self.fd)
+        else:
+            tty.setcbreak(self.fd)
     
     def _leave_cbreak(self):
         termios.tcsetattr(self.fd, termios.TCSAFLUSH, self._orig_termios_mode)
@@ -229,7 +215,8 @@ class Terminal(object):
         self._orig_sigwinch = signal.signal(signal.SIGWINCH, self._sigwinch)
         self._sigwinch()
         self._enter_cbreak()
-        self._enter_keypad()
+        #self._enter_keypad()
+        self._leave_keypad()
         self.clear_screen()
         self.reset_attrs()
         self.hide_cursor()
@@ -239,7 +226,7 @@ class Terminal(object):
         if not self._initialized:
             raise ValueError("not initialized")
         signal.signal(signal.SIGWINCH, self._orig_sigwinch)
-        self._leave_keypad()
+        #self._leave_keypad()
         self._leave_cbreak()
         self.show_cursor()
         self.reset_attrs()
@@ -260,22 +247,14 @@ class Terminal(object):
     
     def get_size(self):
         return self._width, self._height
-
-    def _process_raw_events(self, data):
-        if len(data) == 1:
-            return Char(data),
-        elif len(data) > 1 and data[0] == "\x1b":
-            return Esc(data[1:]),
-        else:
-            return [Char(ch) for ch in data]
-
+    
     def get_event(self, timeout = None):
         if not self._events:
             self._wait_input(timeout)
         data = self._read_all()
         output = self._decoder.decode(data)
         if output:
-            evts = self._process_raw_events(output)
+            evts = TerminalKeys.decode(output)
             self._events.extend(evts)
         
         # note that we might have a queued Resized event here as well

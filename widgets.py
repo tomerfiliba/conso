@@ -1,5 +1,5 @@
 import itertools
-from terminal import Terminal, Char, Esc, Resized
+from terminal import Terminal, Resized
 
 
 class Widget(object):
@@ -30,7 +30,7 @@ class ListBox(Widget):
     def __init__(self, model):
         self.model = model
         self.start_index = 0
-        self.selected_index = 2
+        self.selected_index = 0
         self.hscrolled = 0
     def get_min_size(self):
         return (5, 3)
@@ -48,12 +48,26 @@ class ListBox(Widget):
             sc = inner.subcanvas(self.hscrolled, offy, w, h)
             item.render(sc)
             if self.selected_index == i:
-                canvas.write(u"\u00bb", 1, offy)
+                canvas.write(u"\u00bb", 1, 1 + offy)
             offy += h
-            if offy > inner.height:
+            if offy >= inner.height - 1:
                 break
     def on_event(self, evt):
-        pass
+        if evt.name == "up":
+            self.select(self.selected_index - 1)
+        elif evt.name == "down":
+            self.select(self.selected_index + 1)
+        elif evt.name == "pageup":
+            self.select(self.selected_index - 10)
+        elif evt.name == "pagedown":
+            self.select(self.selected_index + 10)
+    def select(self, index):
+        if index < 0:
+            index = 0
+        if not self.model.hasitem(index):
+            return
+        self.selected_index = index
+        self.start_index = index
 
 class ListModel(object):
     def getitem(self, index):
@@ -82,17 +96,16 @@ class Application(object):
     def _mainloop(self, term):
         while True:
             root_canvas = term.get_canvas()
+            term.clear_screen()
             self.root.render(root_canvas)
             evt = term.get_event()
             if evt == Resized:
                 pass
             else:
-                print evt, " "*30
                 self.root.on_event(evt)
 
-
 if __name__ == "__main__":
-    m = SimpleListModel(["hi", "ther\ne", "world", "zolrf"])
+    m = SimpleListModel(["hi", "ther\ne", "world", "zolrf"] * 10)
     lb = ListBox(m)
     app = Application(lb)
     app.main()
