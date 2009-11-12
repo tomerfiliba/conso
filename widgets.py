@@ -1,8 +1,9 @@
 import itertools
-from terminal import Terminal, Resized
+from terminal import Terminal, ResizedEvent
 
 
 class Widget(object):
+    priority = 50
     def get_min_size(self):
         raise NotImplementedError()
     def get_desired_size(self):
@@ -10,7 +11,7 @@ class Widget(object):
     def render(self, canvas):
         raise NotImplementedError()
     def on_event(self, evt):
-        pass
+        return False
 
 class Label(Widget):
     __slots__ = ["text"]
@@ -53,14 +54,22 @@ class ListBox(Widget):
             if offy >= inner.height - 1:
                 break
     def on_event(self, evt):
+        if self.model.hasitem(self.selected_index):
+            curr = self.model.getitem(self.selected_index)
+            if curr.on_event(evt):
+                return True
         if evt.name == "up":
             self.select(self.selected_index - 1)
+            return True
         elif evt.name == "down":
             self.select(self.selected_index + 1)
+            return True
         elif evt.name == "pageup":
             self.select(self.selected_index - 10)
+            return True
         elif evt.name == "pagedown":
             self.select(self.selected_index + 10)
+            return True
     def select(self, index):
         if index < 0:
             index = 0
@@ -86,7 +95,7 @@ class SimpleListModel(ListModel):
 class HLayout(Widget):
     def __init__(self, *widgets):
         self.widgets = widgets
-        self.focused = widgets[0]
+        self.focused = None
     def get_min_size(self):
         sizes = [w.get_min_size() for w in self.widgets]
         w = sum(s[0] for s in sizes)
@@ -94,34 +103,66 @@ class HLayout(Widget):
         return w, h
     def get_desired_size(self, parent_canvas):
         pass
+    
+    def _calc_widgets_size(self, total_size, axis):
+        widgets = sorted(self.widgets, key = lambda w: w.priority)
+        while True:
+            output = []
+            total_priorities = float(sum(w.priority for w in widgets))
+            for i, wgt in enumerate(widgets):
+                alloted = int(round(total_size * wgt.priority / total_priorities))
+                min = wgt.get_min_size()[axis]
+                if alloted < min:
+                    del widgets[i]
+                    break
+                output.append((wgt, alloted))
+            else:
+                break
+        return output[::-1]
+    
     def render(self, canvas):
-        per_item_width = canvas.width / len(self.widgets)
         offx = 0
-        for w in self.widgets:
-            canvas2 = canvas.subcanvas(offx, 0, per_item_width, canvas.height)
-            w.render(canvas2)
-    def on_event(self, evt):
-        self.focused.on_event(evt)
+        visible = self._calc_widgets_size(canvas.width, 0)
+        self.visible_widgets = [w for w, s in visible]
+        if not self.focused:
+            self.focused = self.visible_widgets[0]
 
+        for widget, width in visible:
+            canvas2 = canvas.subcanvas(offx, 1, width, canvas.height - 1)
+            if self.focused == widget:
+                canvas.write(u"\u00b7", offx + canvas2.width / 2, 0)
+            widget.render(canvas2)
+            offx += canvas2.width
+    
+    def on_event(self, evt):
+        if self.focused and self.focused.on_event(evt):
+            return True
+        if evt.name == "tab":
+            if not self.visible_widgets:
+                return False
+            try:
+                curr = self.visible_widgets.index(self.focused)
+            except ValueError:
+                self.focused = self.visible_widgets[0]
+            else:
+                self.focused = self.visible_widgets[(curr + 1) % len(self.visible_widgets)]
+            return True
 
 class Application(object):
     def __init__(self, root):
         self.root = root
     def main(self):
         with Terminal() as term:
-            try:
-                self._mainloop(term)
-            except KeyboardInterrupt:
-                pass
+            self._mainloop(term)
     
     def _mainloop(self, term):
+        root_canvas = term.get_canvas()
         while True:
-            root_canvas = term.get_canvas()
-            term.clear_screen()
             self.root.render(root_canvas)
             evt = term.get_event()
-            if evt == Resized:
-                pass
+            term.clear_screen()
+            if evt == ResizedEvent:
+                root_canvas = term.get_canvas()
             else:
                 self.root.on_event(evt)
 
@@ -130,6 +171,7 @@ if __name__ == "__main__":
     m = SimpleListModel(["hi", "ther\ne", "world", "zolrf"] * 10)
     lb1 = ListBox(m)
     lb2 = ListBox(m)
+    lb2.priority = 100
     root = HLayout(lb1, lb2)
     app = Application(root)
     app.main()

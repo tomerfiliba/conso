@@ -1,6 +1,8 @@
 import sys
 import os
 import signal
+import fcntl
+import struct
 import errno
 import select
 import curses
@@ -9,19 +11,7 @@ import locale
 import re
 import codecs
 import tty
-from keys import TerminalKeys
-
-
-class Resized(object):
-    __slots__ = []
-Resized = Resized()
-
-class Bunch(dict):
-    def __getattr__(self, name):
-        try:
-            return self[name]
-        except KeyError:
-            raise AttributeError(name)
+from events import ResizedEvent, terminal_keys_trie
 
 
 class Terminal(object):
@@ -33,7 +23,6 @@ class Terminal(object):
             fd = fd.fileno()
         self.fd = fd
         self.encoding = self._get_encoding()
-        self.keys = Bunch()
         self._exec_in_tty = exec_in_tty
         self._termtype = termtype
         self._raw_mode = raw_mode
@@ -122,32 +111,15 @@ class Terminal(object):
         self.RESET_ATTRS = self._tigetstr("sgr0")
         self.FG_COLORS = self._init_colors("setaf", "setf")
         self.BG_COLORS = self._init_colors("setab", "setb")
-        self._init_keys()
 
-    def _init_keys(self):
-        self.keys.left_arrow = self._tigetstr("kcub1")
-        self.keys.right_arrow = self._tigetstr("kcuf1")
-        self.keys.up_arrow = self._tigetstr("kcuu1")
-        self.keys.down_arrow = self._tigetstr("kcud1")
-        self.keys.insert = None
-        self.keys.delete = self._tigetstr("kdch1")
-        self.keys.home = self._tigetstr("khome")
-        self.keys.end = self._tigetstr("kend")
-        self.keys.page_up = self._tigetstr("kpp")
-        self.keys.page_down = self._tigetstr("knp")
-        self.keys.enter = curses.tigetstr("kent")
-        self.keys.backspace = None
-        self.keys.tab = None
-        self.keys.ctrl = Bunch()
-        self.keys.alt = Bunch()
-        self.keys.ctrl_alt = Bunch()
-
-    @classmethod
-    def _get_size(cls):
-        return curses.tigetnum('cols'), curses.tigetnum('lines')
+    def _get_size(self):
+        buf = fcntl.ioctl(self.fd, termios.TIOCGWINSZ, "abcd")
+        h, w = struct.unpack('hh', buf)
+        return w, h
 
     def _sigwinch(self, *dummy):
-        self._events.append(Resized)
+        if ResizedEvent not in self._events:
+            self._events.append(ResizedEvent)
         self._width, self._height = self._get_size()
 
     #=========================================================================
@@ -254,14 +226,10 @@ class Terminal(object):
         data = self._read_all()
         output = self._decoder.decode(data)
         if output:
-            evts = TerminalKeys.decode(output)
-            self._events.extend(evts)
+            self._events.extend(terminal_keys_trie.decode(output))
         
         # note that we might have a queued Resized event here as well
-        if self._events:
-            return self._events.pop(0)
-        else:
-            return None
+        return self._events.pop(0) if self._events else None
 
     def write(self, text, x, y):
         changed = False
@@ -318,7 +286,7 @@ class Canvas(object):
         if y > self.height or x > self.width:
             return
         self.terminal.set_attrs(**self.attrs)
-        self.terminal.write(text[:self.width - x], self.x + x, self.y + y)
+        self.terminal.write(text[:self.width - x], max(self.x, self.x + x), max(self.y, self.y + y))
     def set_attrs(self, **kwargs):
         self.attrs.update(kwargs)
 
