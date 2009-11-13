@@ -52,8 +52,48 @@ class KeyEvent(TerminalEvent):
     def __ne__(self, other):
         return not (self == other)
 
-
 InvalidKeyEvent = KeyEvent(u"\ufffd")
+
+
+class MouseEvent(TerminalEvent):
+    __slots__ = ["x", "y", "btn", "flags"]
+    BTN1 = 1
+    BTN2 = 2
+    BTN3 = 3
+    BTN4 = 4
+    BTN5 = 5
+    BTN_RELEASE = -1
+    _raw_to_button = {0 : BTN1, 1 : BTN2, 2 : BTN3, 3 : BTN_RELEASE,
+        64 : BTN4, 65 : BTN5}
+    
+    def __init__(self, x, y, btn, flags = 0):
+        self.x = x
+        self.y = y
+        self.btn = btn
+        self.flags = flags
+    
+    def __repr__(self):
+        if self.flags:
+            return "MouseEvent(%r, %r, %r, %r)" % (self.x, self.y, self.btn, self.flags)
+        else:
+            return "MouseEvent(%r, %r, %r)" % (self.x, self.y, self.btn)
+    
+    @classmethod
+    def _parse(cls, b1, b2, b3):
+        b = ord(b1) - 32
+        x = ord(b2) - 33
+        y = ord(b3) - 33
+        btn = cls._raw_to_button[(b & 3) | (((b >> 6) & 1) << 6)]
+        flags = (SHIFT if b & 4 else 0) | (ALT if b & 8 else 0) | (CTRL if b & 16 else 0)
+        return cls(x, y, btn, flags)
+
+def _get_mouse_1(byte1):
+    def _get_mouse_2(byte2):
+        def _get_mouse_3(byte3):
+            return MouseEvent._parse(byte1, byte2, byte3)
+        return _get_mouse_3
+    return _get_mouse_2
+
 
 keys = {
     "\x00" : KeyEvent(" ", CTRL),
@@ -106,6 +146,8 @@ keys = {
     "\x1bOm" : KeyEvent("-"),
     "\x1bOk" : KeyEvent("+"),
     "\x1bOM" : KeyEvent("enter"),
+    
+    "\x1b[M" : _get_mouse_1,
 }
 
 for code, name in (("A", "up"), ("B", "down"), ("C", "right"), ("D", "left")):
@@ -133,7 +175,6 @@ for code, name in (("11", "f1"), ("12", "f2"), ("13", "f3"), ("14", "f4"), ("14"
     keys["\x1b[%s~" % (code)] = KeyEvent(name)
     for fcode, flag in MODIFIERS:
         keys["\x1b[%s;%s~" % (code, fcode)] = KeyEvent(name, flag)
-
 
 
 class KeysTrie(object):
@@ -171,7 +212,15 @@ class KeysTrie(object):
     
     def _decode(self, char):
         self.stack.append(char)
-        if char not in self.state:
+        if callable(self.state):
+            next = self.state(char)
+            if callable(next):
+                self.state = next
+                return None
+            else:
+                self.reset()
+                return next
+        elif char not in self.state:
             if len(self.stack) == 1:
                 self.reset()
                 return KeyEvent(char)
@@ -183,7 +232,7 @@ class KeysTrie(object):
                 return InvalidKeyEvent
         else:
             next = self.state[char]
-            if isinstance(next, dict):
+            if isinstance(next, dict) or callable(next):
                 self.state = next
                 return None
             else:
@@ -201,10 +250,6 @@ class KeysTrie(object):
 
 
 terminal_keys_trie = KeysTrie(keys)
-
-
-
-
 
 
 

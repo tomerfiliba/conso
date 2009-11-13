@@ -1,5 +1,6 @@
 import itertools
-from terminal import Terminal, ResizedEvent
+from terminal import Terminal
+from events import KeyEvent, MouseEvent, ResizedEvent
 
 
 class Widget(object):
@@ -11,6 +12,15 @@ class Widget(object):
     def render(self, canvas):
         raise NotImplementedError()
     def on_event(self, evt):
+        if isinstance(evt, KeyEvent):
+            return self.on_key(evt)
+        elif isinstance(evt, MouseEvent):
+            return self.on_mouse(evt)
+        else:
+            return False
+    def on_key(self, key):
+        return False
+    def on_mouse(self, evt):
         return False
 
 class Label(Widget):
@@ -53,7 +63,7 @@ class ListBox(Widget):
             offy += h
             if offy >= inner.height - 1:
                 break
-    def on_event(self, evt):
+    def on_key(self, evt):
         if self.model.hasitem(self.selected_index):
             curr = self.model.getitem(self.selected_index)
             if curr.on_event(evt):
@@ -134,7 +144,7 @@ class HLayout(Widget):
             widget.render(canvas2)
             offx += canvas2.width
     
-    def on_event(self, evt):
+    def on_key(self, evt):
         if self.focused and self.focused.on_event(evt):
             return True
         if evt.name == "tab":

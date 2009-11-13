@@ -17,7 +17,7 @@ from events import ResizedEvent, terminal_keys_trie
 class Terminal(object):
     MAX_IO_CHUNK = 16000
     
-    def __init__(self, fd = sys.stdout, termtype = None, exec_in_tty = True, raw_mode = True):
+    def __init__(self, fd = sys.stdout, termtype = None, exec_in_tty = True, raw_mode = True, use_mouse = True):
         if hasattr(fd, "fileno"):
             fd.flush()
             fd = fd.fileno()
@@ -26,6 +26,7 @@ class Terminal(object):
         self._exec_in_tty = exec_in_tty
         self._termtype = termtype
         self._raw_mode = raw_mode
+        self._use_mouse = use_mouse
         # state
         self._events = []
         self._decoder = codecs.getincrementaldecoder(self.encoding)("replace")
@@ -80,6 +81,12 @@ class Terminal(object):
 
     def _leave_keypad(self):
         self._write(curses.tigetstr("rmkx"))
+    
+    def _enter_mouse_mode(self):
+        self._write("\x1b[?1000;h")
+    
+    def _leave_mouse_mode(self):
+        self._write("\x1b[?1000;l")
     
     @classmethod
     def _init_colors(cls, ansi_cmd, native_cmd):
@@ -189,6 +196,8 @@ class Terminal(object):
         self._enter_cbreak()
         #self._enter_keypad()
         self._leave_keypad()
+        if self._use_mouse:
+            self._enter_mouse_mode()
         self.clear_screen()
         self.reset_attrs()
         self.hide_cursor()
@@ -199,6 +208,8 @@ class Terminal(object):
             raise ValueError("not initialized")
         signal.signal(signal.SIGWINCH, self._orig_sigwinch)
         #self._leave_keypad()
+        if self._use_mouse:
+            self._leave_mouse_mode()
         self._leave_cbreak()
         self.show_cursor()
         self.reset_attrs()
@@ -211,6 +222,9 @@ class Terminal(object):
     def show_cursor(self):
         self._cursor_visible = True
         self._write(self.CURSOR_SHOW)
+
+    def set_title(self, title):
+        self._write("\x1b]2;%s\x07" % (title,))
 
     def clear_screen(self):
         self._cursor_x = 0
@@ -228,7 +242,7 @@ class Terminal(object):
         if output:
             self._events.extend(terminal_keys_trie.decode(output))
         
-        # note that we might have a queued Resized event here as well
+        # note that we might have a queued ResizedEvent event here as well
         return self._events.pop(0) if self._events else None
 
     def write(self, text, x, y):
@@ -315,16 +329,16 @@ class Canvas(object):
         return Canvas(self, x, y, width, height)
 
 
-#if __name__ == "__main__":
-#    with Terminal() as t:
-#        c1 = t.get_canvas(12, 12, 50, 10)
-#        c2 = t.get_canvas(2, 2, 7, 7)
-#        c1.draw_border()
-#        c2.draw_border()
-#        c1.set_attrs(fg = "red")
-#        c2.set_attrs(fg = "yellow", bold = True)
-#        c1.write("hello", 1, 1)
-#        c2.write("worldxxxx", 1, 1)
+if __name__ == "__main__":
+    with Terminal() as t:
+        i = 0
+        while True:
+            evt = t.get_event()
+            if i >= t._height:
+                t.clear_screen()
+                i = 0
+            t.write(repr(evt), 0, i)
+            i += 1
 
 
 
