@@ -227,8 +227,6 @@ class Terminal(object):
         self._write("\x1b]2;%s\x07" % (title,))
 
     def clear_screen(self):
-        self._cursor_x = 0
-        self._cursor_y = 0
         self._write(self.CLEAR_SCREEN)
     
     def get_size(self):
@@ -245,7 +243,7 @@ class Terminal(object):
         # note that we might have a queued ResizedEvent event here as well
         return self._events.pop(0) if self._events else None
 
-    def write(self, text, x, y):
+    def write(self, x, y, text):
         changed = False
         for key in self._new_attrs:
             if self._curr_attrs[key] != self._new_attrs[key]:
@@ -278,10 +276,6 @@ class Terminal(object):
         self._new_attrs = {}
         self._write(self.RESET_ATTRS)
     
-    def get_canvas(self, x = 0, y = 0, width = None, height = None):
-        width = self._width - x if width is None else width
-        height = self._height - y if height is None else height
-        return Canvas(self, x, y, width, height)
 
 
 class Canvas(object):
