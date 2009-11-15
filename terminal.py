@@ -12,12 +12,13 @@ import re
 import codecs
 import tty
 from events import ResizedEvent, terminal_keys_trie
-
+from canvas import RootCanvas
 
 class Terminal(object):
     MAX_IO_CHUNK = 16000
     
-    def __init__(self, fd = sys.stdout, termtype = None, exec_in_tty = True, raw_mode = True, use_mouse = True):
+    def __init__(self, fd = sys.stdout, termtype = None, exec_in_tty = True, 
+            raw_mode = True, use_mouse = False):
         if hasattr(fd, "fileno"):
             fd.flush()
             fd = fd.fileno()
@@ -276,62 +277,20 @@ class Terminal(object):
         self._new_attrs = {}
         self._write(self.RESET_ATTRS)
     
+    def get_root_canvas(self):
+        return RootCanvas(self, self._width, self._height)
 
-
-class Canvas(object):
-    def __init__(self, terminal, x, y, width, height):
-        self.terminal = terminal
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-        self.attrs = {}
-    
-    def __repr__(self):
-        return "Canvas(%r, %r, %rx%r)" % (self.x, self.y, self.width, self.height)
-    
-    def write(self, text, x, y):
-        if y > self.height or x > self.width:
-            return
-        self.terminal.set_attrs(**self.attrs)
-        self.terminal.write(text[:self.width - x], max(self.x, self.x + x), max(self.y, self.y + y))
-    def set_attrs(self, **kwargs):
-        self.attrs.update(kwargs)
-
-    def draw_hline(self, x, y, length):
-        self.write(u"\u2500" * length, x, y)
-    def draw_vline(self, x, y, length):
-        for i in range(length):
-            self.write(u"\u2502", x, y + i)
-    def draw_box(self, x, y, w, h):
-        self.draw_hline(x, y, w)
-        self.draw_hline(x, y + h, w)
-        self.draw_vline(x, y, h)
-        self.draw_vline(x + w, y, h)
-        self.write(u"\u250C", x, y)
-        self.write(u"\u2510", x+w, y)
-        self.write(u"\u2514", x, y+h)
-        self.write(u"\u2518", x+w, y+h)
-    def draw_border(self):
-        self.draw_box(0, 0, self.width-1, self.height)
-        return self.subcanvas(1, 1, self.width - 1, self.height - 1)
-    
-    def subcanvas(self, x = 0, y = 0, width = None, height = None):
-        width = self.width - x if width is None else width
-        height = self.height - y if height is None else height
-        #return self.terminal.get_canvas(self.x + x, self.y + y, width, height)
-        return Canvas(self, x, y, width, height)
 
 
 if __name__ == "__main__":
-    with Terminal() as t:
+    with Terminal(use_mouse = True) as t:
         i = 0
         while True:
             evt = t.get_event()
             if i >= t._height:
                 t.clear_screen()
                 i = 0
-            t.write(repr(evt), 0, i)
+            t.write(0, i, str(evt))
             i += 1
 
 
