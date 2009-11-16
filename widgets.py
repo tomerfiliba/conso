@@ -62,6 +62,9 @@ class ListBox(Widget):
     def render(self):
         pass
 
+class ListModel(object):
+    pass
+
 class Layout(Widget):
     HORIZONTAL = 0
     VERTICAL = 1
@@ -100,12 +103,14 @@ class Layout(Widget):
     
     def remodel(self, canvas):
         self.visible_widgets = []
+        visible_set = set()
         if self.axis == self.HORIZONTAL:
             offx = 0
             for wgt, alloted in self._calc_visible_widgets(canvas.width):
                 canvas2 = canvas.subcanvas(offx, 0, alloted, canvas.height)
                 wgt.remodel(canvas2)
                 self.visible_widgets.append((wgt, (offx, 0, canvas2.width, canvas2.height)))
+                visible_set.add(wgt)
                 offx += alloted
         else:
             offy = 0
@@ -113,12 +118,26 @@ class Layout(Widget):
                 canvas2 = canvas.subcanvas(0, offy, canvas.width, alloted)
                 wgt.remodel(canvas2)
                 self.visible_widgets.append((wgt, (0, offy, canvas2.width, canvas2.height)))
+                visible_set.add(wgt)
                 offy += alloted
-        self.focused_widget = self.visible_widgets[0][0]
+        if visible_set and self.focused_widget not in visible_set:
+            self.focused_widget = self.visible_widgets[0][0]
+        else:
+            self.focused_widget = None
     
     def render(self):
         for wgt, pos in self.visible_widgets:
             wgt.render()
+    
+    def on_key(self, key):
+        if self.focused_widget:
+            if self.focused_widget.on_event(key):
+                return True
+        if key.name == "ctrl left":
+            pass
+        elif key.name == "ctrl right":
+            pass
+        return False
 
 def HLayout(*widgets):
     return Layout(Layout.HORIZONTAL, widgets)
@@ -129,7 +148,23 @@ def VLayout(*widgets):
 class TabbedLayout(Widget):
     pass
 
+class Container(Widget):
+    def __init__(self, *widgets):
+        self.widgets = widgets
+    
+    def choose(self):
+        pass
 
+
+if __name__ == "__main__":
+    from application import Application
+    
+    r = VLayout(
+        HLayout(Label("hello"), Label("world")),
+        HLayout(Label("ford"), Label("bord"), Label("moshe")),
+    )
+    app = Application(r)
+    app.run(exit=False)
 
 
 

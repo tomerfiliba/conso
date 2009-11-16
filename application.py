@@ -1,28 +1,33 @@
 import sys
 import inspect
+from textwrap import wrap
 from terminal import Terminal
 from events import KeyEvent, MouseEvent, ResizedEvent
 
 
 class SwitchParsingError(Exception):
-    pass
-class TailArgsError(SwitchParsingError):
-    pass
-class DanglingArgsError(TailArgsError):
-    pass
+    def __str__(self):
+        return self.MSG % self.args
+class TooFewTailArgsError(SwitchParsingError):
+    MSG = "Application takes at least %r positional arguments, %r given"
+class TooManyTailArgsError(SwitchParsingError):
+    MSG = "Application takes at most %r positional arguments, %r given"
+class DanglingArgsError(SwitchParsingError):
+    MSG = "Dangling arguments appear before %r: %r"
 class ParameterTypeError(SwitchParsingError):
-    pass
+    MSG = "%r expects a parameter of %r, got %r"
 class MissingParameterError(SwitchParsingError):
-    pass
+    MSG = "%r requires a parameter"
 class InvalidSwitchError(SwitchParsingError):
-    pass
-class RequiredSwitchNotGiven(SwitchParsingError):
-    pass
+    MSG = "Invalid switch given: %r"
+class MandatorySwitchNotGiven(SwitchParsingError):
+    MSG = "Mandatory switch not given: %r"
 class SwitchGivenMoreThanOnce(SwitchParsingError):
-    pass
+    MSG = "Switch %r (or an alias) given more than once"
 
 
-def switch(names, type = None, doc = None, multiple = False, required = False, overriding = False):
+def switch(names, type = None, doc = None, multiple = False, mandatory = False, 
+        overriding = False, excludes = (), requires = ()):
     if isinstance(names, basestring):
         names = [names]
     if not names:
@@ -37,19 +42,21 @@ def switch(names, type = None, doc = None, multiple = False, required = False, o
         if not doc:
             doc2 = inspect.getdoc(func)
         if not doc2:
-            doc2 = repr(func)
+            doc2 = func.__name__
         if type:
             a, va, kw, dfl = inspect.getargspec(func)
             if va:
                 paramname = va
             else:
                 if len(a) < 2:
-                    raise TypeError("switches taking a parameter must accept at least one positional argument")
+                    raise TypeError("switches taking a parameter must accept "
+                        "at least one positional argument")
                 paramname = a[1]
         else:
             paramname = None
         func._switch_info = dict(names = names, paramtype = type, paramname = paramname, 
-            doc = doc2, multiple = multiple, required = required, invoked = False)
+            doc = doc2, multiple = multiple, mandatory = mandatory, invoked = False,
+            excludes = excludes, requires = requires)
         return func
     return deco
 
@@ -75,7 +82,8 @@ class CliApplication(object):
             swinfo = obj._switch_info
             for key in swinfo["names"]:
                 if key in self._switches and not swinfo["overriding"]:
-                    raise ValueError("multiple switches register the same name: %r" % (name,))
+                    raise ValueError("multiple switches register the same "
+                        "name: %r" % (name,))
                 self._switches[key] = (obj, swinfo)
     
     def _parse_cli_args(self, argv):
@@ -85,11 +93,11 @@ class CliApplication(object):
             param = None
             if arg == self.END_OF_SWITCHES:
                 if tail:
-                    raise DanglingArgsError("dangling arguments appear before %r: %r" % (arg, tail))
+                    raise DanglingArgsError(arg, tail)
                 return argv
             elif arg.startswith(self.LONG_SWITCH_PREFIX):
                 if tail:
-                    raise DanglingArgsError("dangling arguments appear before %r: %r" % (arg, tail))
+                    raise DanglingArgsError(arg, tail)
                 arg = arg[len(self.LONG_SWITCH_PREFIX):]
                 if "=" in arg:
                     sw, arg = arg.split("=", 1)
@@ -100,7 +108,7 @@ class CliApplication(object):
                 self._invoke_switch(arg, argv)
             elif arg.startswith(self.SHORT_SWITCH_PREFIX):
                 if tail:
-                    raise DanglingArgsError("dangling arguments appear before %r: %r" % (arg, tail))
+                    raise DanglingArgsError(arg, tail)
                 arg = arg[len(self.SHORT_SWITCH_PREFIX):]
                 if len(arg) > 1:
                     arg = arg[0]
@@ -111,8 +119,8 @@ class CliApplication(object):
                 tail.append(arg)
         
         for swobj, swinfo in self._switches.itervalues():
-            if swinfo["required"] and not swinfo["invoked"]:
-                raise RequiredSwitchNotGiven("%r is required" % (swinfo["names"][0],))
+            if swinfo["mandatory"] and not swinfo["invoked"]:
+                raise MandatorySwitchNotGiven(swinfo["names"][0])
         
         return tail
     
@@ -121,39 +129,20 @@ class CliApplication(object):
             raise InvalidSwitchError(sw)
         swobj, swinfo = self._switches[sw]
         if swinfo["invoked"] and not swinfo["multiple"]:
-            raise SwitchGivenMoreThanOnce("switch %r (or an alias) given more than once" % (sw,))
+            raise SwitchGivenMoreThanOnce(sw)
         swinfo["invoked"] = True
         if swinfo["paramtype"]:
             if not argv:
-                raise MissingParameterError("expected a parameter to follow %r" % (sw,))
+                raise MissingParameterError(sw)
             param = argv.pop(0)
             try:
-                param = swinfo["paramtype"](param)
+                param2 = swinfo["paramtype"](param)
             except (TypeError, ValueError), ex:
-                raise ParameterTypeError("invalid parameter type for %r; expected %r" % (sw, swinfo["paramtype"]))
-            swobj(param)
+                raise ParameterTypeError(sw, swinfo["paramtype"], param)
+            swobj(param2)
         else:
             swobj()
 
-    def _parse_short_switch(self, sw, argv):
-        if len(arg) > 1:
-            arg = arg[0]
-            rest = arg[1:]
-            swobj, swinfo = self._switches[arg]
-            if swinfo["paramtype"]:
-                param = swinfo["paramtype"](rest)
-                swobj(rest)
-            else:
-                argv.insert(0, self.SHORT_SWITCH_PREFIX + rest)
-                swobj()
-        else:
-            swobj, swinfo = self._switches[arg]
-            if swinfo["paramtype"]:
-                param = swinfo["paramtype"](rest)
-                swobj(param)
-            else:
-                swobj()
-    
     def run(self, argv = None, exit = True):
         if not argv:
             argv = sys.argv
@@ -167,13 +156,12 @@ class CliApplication(object):
                 atmost = len(a) - 1
                 atleast = atmost - (len(dfl) if dfl else 0)
                 if len(tail) > atmost:
-                    raise TailArgsError("application takes at most %d positional arguments, %d given" % (atmost, len(tail)))
+                    raise TooManyTailArgsError(atmost, len(tail))
                 if len(tail) < atleast:
-                    raise TailArgsError("application takes at least %d positional arguments, %d given" % (atleast, len(tail)))
+                    raise TooFewTailArgsError(atleast, len(tail))
         except SwitchParsingError, ex:
-            print >>sys.stderr, repr(ex)
-            print >>sys.stderr
-            self.cli_help()
+            print >>sys.stderr, "Error: %s\n" % (ex,)
+            self._generate_cli_help(sys.stderr, show_doc = False)
             if exit:
                 sys.exit(2)
             else:
@@ -188,20 +176,23 @@ class CliApplication(object):
     def main(self):
         raise NotImplementedError()
     
-    def _generate_cli_version(self):
+    def _generate_cli_version(self, file = sys.stdout):
         app_name = self.APP_NAME if self.APP_NAME else self.__class__.__name__
         app_ver = self.APP_VERSION if self.APP_VERSION else "<not set>"
-        print "%s [version %s]" % (app_name, app_ver)
+        print >>file, "%s [version %s]" % (app_name, app_ver)
 
-    def _generate_cli_help(self, width = 78):
-        self._generate_cli_version()
-        app_doc = self.APP_DOC if self.APP_DOC else inspect.getdoc(self)
-        if app_doc:
-            print
-            print app_doc
+    def _generate_cli_help(self, file = sys.stdout, show_doc = True, width = 79):
+        if show_doc:
+            app_doc = self.APP_DOC if self.APP_DOC else inspect.getdoc(self)
+            if app_doc:
+                print >>file, "  " + app_doc + "\n"
         
         info = []
-        for _, swinfo in self._switches.values():
+        visited = set()
+        for swobj, swinfo in self._switches.values():
+            if swobj in visited:
+                continue
+            visited.add(swobj)
             names = []
             paramname = swinfo["paramname"]
             for n in swinfo["names"]:
@@ -209,45 +200,54 @@ class CliApplication(object):
                     p = " " + paramname if paramname else ""
                     names.append(self.SHORT_SWITCH_PREFIX + n + p)
                 else:
-                    p = "==" + paramname if paramname else ""
+                    p = "=" + paramname if paramname else ""
                     names.append(self.LONG_SWITCH_PREFIX + n + p)
             names.sort(key = len)
-            doc = swinfo["doc"]
+            doc = " ".join(swinfo["doc"].strip().splitlines())
+            if doc[-1] not in ".;!?,":
+                doc += "."
+            if paramname:
+                doc += " '%s' is %s." % (paramname, swinfo["paramtype"])
             info.append((", ".join(names), doc))
         
-        if not info:
+        main_args, va, kw, dfl = inspect.getargspec(self.main)
+        main_args.pop(0) # 'self'
+        if va:
+            main_args.append("%s..." % (va,))
+        
+        if info:
+            print >>file, "Usage: %s OPTIONS %s" % (self._exe_name, " ".join(main_args,))
+        else:
+            print >>file, "Usage: %s %s" % (self._exe_name, " ".join(main_args,))
             return
         
-        print
-        print "%s OPTIONS... <args>" % (self._exe_name,)
-        info.sort(key = lambda item: item[0])
+        info.sort(key = lambda item: item[0].strip(self.LONG_SWITCH_PREFIX).strip(self.SHORT_SWITCH_PREFIX))
         longest = min(max(len(swname) for swname, doc in info), 30)
-        pattern = "  %%-%ds  %%s" % (longest,)
+        pattern = "  %%-%ds  " % (longest,)
         start_wrap = 2 + longest + 2
         for swnames, doc in info:
-            line = pattern % (swnames, doc)
-            first = line[:width]
-            rest = line[width:]
-            text = [first]
+            prefix = pattern % (swnames)
+            lines = wrap(doc, width - len(prefix))
+            first = lines[0]
+            rest = wrap(" ".join(lines[1:]), width - start_wrap)
+            print >>file, prefix + first
             if rest:
-                available = width - start_wrap
-                for i in range(0, len(rest), available):
-                    text.append(start_wrap * " " + rest[i:i+available])
-            print "\n".join(text)
+                print >>file, "\n".join([" " * start_wrap + line for line in rest])
     
     @switch(["h", "help"])
     def cli_help(self):
         """show this help message and quit"""
+        self._generate_cli_version()
         self._generate_cli_help()
         sys.exit(0)
     
     @switch(["v", "version"])
     def cli_version(self):
-        """print the application's version and quit and tell and very long long long story about the little dog who ran to the forest"""
-        self._generate_cli_help()
+        """print the application's version and quit"""
+        self._generate_cli_version()
         sys.exit(0)
 
-
+    
 class Application(CliApplication):
     def __init__(self, root):
         CliApplication.__init__(self)
@@ -255,7 +255,8 @@ class Application(CliApplication):
 
     def main(self):
         self._mainloop()
-    
+        return 0
+
     def _mainloop(self):
         with Terminal() as term:
             while True:
@@ -263,21 +264,14 @@ class Application(CliApplication):
                 if evt == ResizedEvent:
                     root_canvas = term.get_root_canvas()
                     self.root.remodel(root_canvas)
+                elif evt == "ctrl q":
+                    break
                 else:
                     self.root.on_event(evt)
                 self.root.render()
                 root_canvas.commit()
+            term.clear_screen()
 
-
-if __name__ == "__main__":
-    from widgets import *
-    
-    r = VLayout(
-        HLayout(Label("hello"), Label("world")),
-        HLayout(Label("ford"), Label("bord"), Label("moshe")),
-    )
-    app = Application(r)
-    app.run()
 
 
 

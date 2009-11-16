@@ -14,6 +14,7 @@ import tty
 from events import ResizedEvent, terminal_keys_trie
 from canvas import RootCanvas
 
+
 class Terminal(object):
     MAX_IO_CHUNK = 16000
     
@@ -292,11 +293,6 @@ if __name__ == "__main__":
                 i = 0
             t.write(0, i, str(evt))
             i += 1
-
-
-
-
-
 
 
 
