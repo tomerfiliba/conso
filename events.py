@@ -106,59 +106,47 @@ def _get_mouse_1(byte1):
 
 
 keys = {
-    "\x00" : KeyEvent(" ", CTRL),
-    "\x01" : KeyEvent("a", CTRL),
-    "\x02" : KeyEvent("b", CTRL),
-    "\x03" : KeyEvent("c", CTRL),
-    "\x04" : KeyEvent("d", CTRL),
-    "\x05" : KeyEvent("e", CTRL),
-    "\x06" : KeyEvent("f", CTRL),
-    "\x07" : KeyEvent("g", CTRL),
-    "\x08" : KeyEvent("backspace"), # h
-    "\x09" : KeyEvent("tab"),       # i
-    "\x0a" : KeyEvent("j", CTRL),
-    "\x0b" : KeyEvent("k", CTRL),
-    "\x0c" : KeyEvent("l", CTRL),
-    "\x0d" : KeyEvent("enter"),     # m
-    "\x0e" : KeyEvent("n", CTRL),
-    "\x0f" : KeyEvent("o", CTRL),
-    "\x10" : KeyEvent("p", CTRL),
-    "\x11" : KeyEvent("q", CTRL),
-    "\x12" : KeyEvent("r", CTRL),
-    "\x13" : KeyEvent("s", CTRL),
-    "\x14" : KeyEvent("t", CTRL),
-    "\x15" : KeyEvent("u", CTRL),
-    "\x16" : KeyEvent("v", CTRL),
-    "\x17" : KeyEvent("w", CTRL),
-    "\x18" : KeyEvent("x", CTRL),
-    "\x19" : KeyEvent("y", CTRL),
-    "\x1a" : KeyEvent("z", CTRL),
-    "\x1b" : KeyEvent("esc"),       # [
-    "\x1c" : KeyEvent("\\", CTRL),  # \ |
-    "\x1d" : KeyEvent("]", CTRL),
-    "\x1e" : KeyEvent("6", CTRL),
-    "\x1f" : KeyEvent("?", CTRL),
-    "\x7f" : KeyEvent("backspace"),
+    "\x1b[Z" : KeyEvent(u"tab", SHIFT),
+    "\x1b[E" : KeyEvent(u"5"),
+    "\x1b[F" : KeyEvent(u"end"),
+    "\x1b[G" : KeyEvent(u"5"),
+    "\x1b[H" : KeyEvent(u"home"),
+    "\x1bOA" : KeyEvent(u"up"),
+    "\x1bOB" : KeyEvent(u"down"),
+    "\x1bOC" : KeyEvent(u"right"),
+    "\x1bOD" : KeyEvent(u"left"),
+    "\x1bOH" : KeyEvent(u"home"),
+    "\x1bOF" : KeyEvent(u"end"),
+    "\x1bOo" : KeyEvent(u"/"),
+    "\x1bOj" : KeyEvent(u"*"),
+    "\x1bOm" : KeyEvent(u"-"),
+    "\x1bOk" : KeyEvent(u"+"),
+    "\x1bOM" : KeyEvent(u"enter"),
     
-    "\x1b[Z" : KeyEvent("tab", SHIFT),
-    "\x1b[E" : KeyEvent("5"),
-    "\x1b[F" : KeyEvent("end"),
-    "\x1b[G" : KeyEvent("5"),
-    "\x1b[H" : KeyEvent("home"),
-    "\x1bOA" : KeyEvent("up"),
-    "\x1bOB" : KeyEvent("down"),
-    "\x1bOC" : KeyEvent("right"),
-    "\x1bOD" : KeyEvent("left"),
-    "\x1bOH" : KeyEvent("home"),
-    "\x1bOF" : KeyEvent("end"),
-    "\x1bOo" : KeyEvent("/"),
-    "\x1bOj" : KeyEvent("*"),
-    "\x1bOm" : KeyEvent("-"),
-    "\x1bOk" : KeyEvent("+"),
-    "\x1bOM" : KeyEvent("enter"),
+    "\x08" : KeyEvent(u"backspace"), # h
+    "\x09" : KeyEvent(u"tab"),       # i
+    "\x0d" : KeyEvent(u"enter"),     # m
+    "\x1b" : KeyEvent(u"esc"),       # [
+    "\x7f" : KeyEvent(u"backspace"),
+
+    "\x1b\x08" : KeyEvent(u"backspace", ALT), # h
+    "\x1b\x09" : KeyEvent(u"tab", ALT),       # i
+    "\x1b\x0d" : KeyEvent(u"enter", ALT),     # m
+    "\x1b\x1b" : KeyEvent(u"esc", ALT),       # [
+    "\x1b\x7f" : KeyEvent(u"backspace", ALT),
     
     "\x1b[M" : _get_mouse_1,
 }
+
+for k, ch in [("\x00", u" "), ("\x01", u"a"), ("\x02", u"b"), ("\x03", u"c"),
+        ("\x04", u"d"), ("\x05", u"e"), ("\x06", u"f"), ("\x07", u"g"),
+        ("\x0a", u"j"), ("\x0b", u"k"), ("\x0c", u"l"), ("\x0e", u"n"),
+        ("\x0f", u"o"), ("\x10", u"p"), ("\x11", u"q"), ("\x12", u"r"),
+        ("\x13", u"s"), ("\x14", u"t"), ("\x15", u"u"), ("\x16", u"v"),
+        ("\x17", u"w"), ("\x18", u"x"), ("\x19", u"y"), ("\x1a", u"z"),
+        ("\x1c", u"|"), ("\x1d", u"]"), ("\x1e", u"6"), ("\x1f", u"?")]:
+    keys[k] = KeyEvent(ch, CTRL)
+    keys["\x1b" + k] = KeyEvent(ch, CTRL | ALT)
 
 for code, name in (("A", "up"), ("B", "down"), ("C", "right"), ("D", "left")):
     keys["\x1b[%s" % (code,)] = KeyEvent(name)

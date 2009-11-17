@@ -72,7 +72,7 @@ class Canvas(object):
 
 
 class RootCanvas(Canvas):
-    EMPTY_CHAR = (" ", None)
+    EMPTY_CHAR = (" ", {})
     def __init__(self, term, width, height):
         self.term = term
         self.width = width
@@ -90,7 +90,7 @@ class RootCanvas(Canvas):
                 old = self.old_buffer[y][x]
                 if new != old:
                     ch, attrs = new
-                    self.term.write(x, y, ch, **attrs)
+                    self.term.write(x, y, ch, attrs)
         self.old_buffer = self.new_buffer
         self.new_buffer = self._get_empty_buffer()
     

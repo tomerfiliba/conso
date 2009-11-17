@@ -15,6 +15,17 @@ from events import ResizedEvent, terminal_keys_trie
 from canvas import RootCanvas
 
 
+class NoopCodec(object):
+    __slots__ = []
+    @staticmethod
+    def encode(data):
+        return data, len(data)
+    @staticmethod
+    def decode(data):
+        return data
+NoopCodec = NoopCodec()
+
+
 class Terminal(object):
     MAX_IO_CHUNK = 16000
     
@@ -24,15 +35,19 @@ class Terminal(object):
             fd.flush()
             fd = fd.fileno()
         self.fd = fd
-        self.encoding = self._get_encoding()
+        self.encoding = self._get_encoding().lower()
         self._exec_in_tty = exec_in_tty
         self._termtype = termtype
         self._raw_mode = raw_mode
         self._use_mouse = use_mouse
         # state
         self._events = []
-        self._decoder = codecs.getincrementaldecoder(self.encoding)("replace")
-        self._encoder = codecs.getencoder(self.encoding)
+        if not self.encoding or self.encoding == "ascii":
+            self._decoder = NoopCodec
+            self._encoder = NoopCodec.encode
+        else:
+            self._decoder = codecs.getincrementaldecoder(self.encoding)("replace")
+            self._encoder = codecs.getencoder(self.encoding)
         self._initialized = False
     
     def __enter__(self):
@@ -79,10 +94,10 @@ class Terminal(object):
         termios.tcsetattr(self.fd, termios.TCSAFLUSH, self._orig_termios_mode)
     
     def _enter_keypad(self):
-        self._write(curses.tigetstr("smkx"))
+        self._write(self._tigetstr("smkx"))
 
     def _leave_keypad(self):
-        self._write(curses.tigetstr("rmkx"))
+        self._write(self._tigetstr("rmkx"))
     
     def _enter_mouse_mode(self):
         self._write("\x1b[?1000;h")
@@ -112,14 +127,16 @@ class Terminal(object):
         self.CURSOR_SHOW = self._tigetstr("cnorm")
         self.CURSOR_MOVE = lambda x, y, _template = self._tigetstr("cup"): curses.tparm(_template, y, x)
         self.CLEAR_SCREEN = self._tigetstr("clear")
-        self.ATTR_BLINK = self._tigetstr("blink")
-        self.ATTR_BOLD = self._tigetstr("bold")
-        self.ATTR_DIM = self._tigetstr("dim")
-        self.ATTR_INVERSED = self._tigetstr("rev")
-        self.ATTR_UNDERLINE = self._tigetstr("smul")
         self.RESET_ATTRS = self._tigetstr("sgr0")
-        self.FG_COLORS = self._init_colors("setaf", "setf")
-        self.BG_COLORS = self._init_colors("setab", "setb")
+        self.TEXT_ATTRS = dict(
+            bold = self._tigetstr("bold"),
+            blink = self._tigetstr("blink"),
+            dim = self._tigetstr("dim"),
+            inversed = self._tigetstr("rev"),
+            underlined = self._tigetstr("smul"),
+            fg = self._init_colors("setaf", "setf"),
+            bg = self._init_colors("setab", "setb"),
+        )
 
     def _get_size(self):
         buf = fcntl.ioctl(self.fd, termios.TIOCGWINSZ, "abcd")
@@ -196,7 +213,6 @@ class Terminal(object):
         self._orig_sigwinch = signal.signal(signal.SIGWINCH, self._sigwinch)
         self._sigwinch()
         self._enter_cbreak()
-        #self._enter_keypad()
         self._leave_keypad()
         if self._use_mouse:
             self._enter_mouse_mode()
@@ -209,7 +225,6 @@ class Terminal(object):
         if not self._initialized:
             raise ValueError("not initialized")
         signal.signal(signal.SIGWINCH, self._orig_sigwinch)
-        #self._leave_keypad()
         if self._use_mouse:
             self._leave_mouse_mode()
         self._leave_cbreak()
@@ -245,15 +260,19 @@ class Terminal(object):
         # note that we might have a queued ResizedEvent event here as well
         return self._events.pop(0) if self._events else None
 
-    def write(self, x, y, text, **attrs):
+    def write(self, x, y, text, attrs = {}):
         reset = False
         caps = [self.CURSOR_MOVE(x, y)]
         for key, val in self._attrs.iteritems():
-            new = attrs.get(key)
+            new = attrs.get(key, None)
             if new != val:
-                self._attrs[key] = new
-                caps.append(val)
                 reset = True
+                self._attrs[key] = new
+                if new:
+                    if type(new) is bool:
+                        caps.append(self.TEXT_ATTRS[key])
+                    else:
+                        caps.append(self.TEXT_ATTRS[key][new])
         if reset:
             caps.insert(0, self.RESET_ATTRS)
         text2 = [ch if ord(ch) >= 32 else u"\ufffd" for ch in text]
@@ -262,7 +281,7 @@ class Terminal(object):
 
     def reset_attrs(self):
         self._attrs = dict(fg = None, bg = None, underlined = False,
-            bold = False, inversed = False)
+            bold = False, inversed = False, dim = False)
         self._write(self.RESET_ATTRS)
     
     def get_root_canvas(self):
@@ -272,13 +291,22 @@ class Terminal(object):
 
 if __name__ == "__main__":
     with Terminal(use_mouse = True) as t:
+#        while True:
+#            t._wait_input()
+#            x = t._read_all()
+#            if x == "q":
+#                break
+#            t.clear_screen()
+#            t.write(0, 0, repr(x))
         i = 0
         while True:
             evt = t.get_event()
+            if evt == "ctrl q":
+                break
             if i >= t._height:
                 t.clear_screen()
                 i = 0
-            t.write(0, i, str(evt))
+            t.write(0, i, str(evt), dict(fg = "blue" if i % 2 else "red"))
             i += 1
 
 
