@@ -245,37 +245,24 @@ class Terminal(object):
         # note that we might have a queued ResizedEvent event here as well
         return self._events.pop(0) if self._events else None
 
-    def write(self, x, y, text):
-        changed = False
-        for key in self._new_attrs:
-            if self._curr_attrs[key] != self._new_attrs[key]:
-                self._curr_attrs[key] = self._new_attrs[key]
-                changed = True
-        self._new_attrs.clear()
+    def write(self, x, y, text, **attrs):
+        reset = False
         caps = [self.CURSOR_MOVE(x, y)]
-        if changed:
-            caps.append(self.RESET_ATTRS)
-            caps.extend(cap for cap in self._curr_attrs.values() if cap)
+        for key, val in self._attrs.iteritems():
+            new = attrs.get(key)
+            if new != val:
+                self._attrs[key] = new
+                caps.append(val)
+                reset = True
+        if reset:
+            caps.insert(0, self.RESET_ATTRS)
         text2 = [ch if ord(ch) >= 32 else u"\ufffd" for ch in text]
         data = "".join(caps) + "".join(text2)
         self._write(data)
 
-    def set_attrs(self, fg = None, bg = None, bold = None, underlined = None, inversed = None):
-        if fg is not None:
-            self._new_attrs["fg"] = self.FG_COLORS[fg]
-        if bg is not None:
-            self._new_attrs["bg"] = self.BG_COLORS[bg]
-        if bold is not None:
-            self._new_attrs["bold"] = self.ATTR_BOLD if bold else None
-        if underlined is not None:
-            self._new_attrs["underlined"] = self.ATTR_UNDERLINE if underlined else None
-        if inversed is not None:
-            self._new_attrs["inversed"] = self.ATTR_INVERSED if inversed else None
-    
     def reset_attrs(self):
-        self._curr_attrs = dict(fg = None, bg = None, underlined = False,
+        self._attrs = dict(fg = None, bg = None, underlined = False,
             bold = False, inversed = False)
-        self._new_attrs = {}
         self._write(self.RESET_ATTRS)
     
     def get_root_canvas(self):

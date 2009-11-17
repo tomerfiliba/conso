@@ -76,8 +76,8 @@ class CliApplication(object):
     def _prepare_switches(self):
         self._switches = {}
         for name in dir(self):
-            obj = getattr(self, name)
-            if not hasattr(obj, "_switch_info"):
+            obj = getattr(self.__class__, name, None)
+            if not callable(obj) or not hasattr(obj, "_switch_info"):
                 continue
             swinfo = obj._switch_info
             for key in swinfo["names"]:
@@ -139,9 +139,9 @@ class CliApplication(object):
                 param2 = swinfo["paramtype"](param)
             except (TypeError, ValueError), ex:
                 raise ParameterTypeError(sw, swinfo["paramtype"], param)
-            swobj(param2)
+            swobj(self, param2)
         else:
-            swobj()
+            swobj(self)
 
     def run(self, argv = None, exit = True):
         if not argv:

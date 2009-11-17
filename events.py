@@ -29,6 +29,14 @@ class KeyEvent(TerminalEvent):
             flags |= names.get(attr.lower(), 0)
         return cls(attrs[-1], flags)
 
+    def as_char(self):
+        if self.flags == 0:
+            if self.name == "enter":
+                return "\n"
+            if len(self.name) == 1:
+                return self.name
+        return None
+
     def __repr__(self):
         return "KeyEvent(%r, %r)" % (self.name, self.flags)
     def __str__(self):
@@ -51,6 +59,8 @@ class KeyEvent(TerminalEvent):
             return NotImplemented
     def __ne__(self, other):
         return not (self == other)
+    def __hash__(self):
+        return hash(self.name)
 
 InvalidKeyEvent = KeyEvent(u"\ufffd")
 
