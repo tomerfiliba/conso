@@ -117,6 +117,43 @@ class TextEntry(Widget):
                 return True
         return False
 
+class Button(Widget):
+    def __init__(self, text, callback):
+        self.text = text
+        self.callback = callback
+    def _on_key(self, evt):
+        if evt == "enter" or evt == "space":
+            pass
+
+class Frame(Widget):
+    def __init__(self, title, body):
+        self.title = Label(title)
+        self.body
+
+class Container(Widget):
+    def __init__(self, widgets):
+        self.widgets = widgets
+        self.selected_index = 0
+    
+    def select(self, index):
+        if index < 0 or index > len(self.widgets):
+            raise IndexError("index out of bounds")
+        self.selected_index = index
+    
+    def render(self):
+        pass
+    
+    def on_event(self, evt):
+        self.widgets[self.selected_index].on_event(evt)
+
+
+class TabBox(Widget):
+    def __init__(self, widgets):
+        self.widgets = widgets
+        self.selected_index = 0
+    
+    def select(self):
+        pass
 
 class ListModel(object):
     def hasitem(self, index):
@@ -147,6 +184,8 @@ class ListBox(Widget):
     def remodel(self, canvas):
         self.canvas = canvas
     def render(self, focused = False, highlight = False):
+        # XXX: scroll bar
+        # XXX: horizontal scroll
         offy = 0
         if self.selected_index < self.start_index or self.selected_index > self.last_index:
             self.last_index = None
@@ -248,24 +287,30 @@ class Layout(Widget):
     
     def render(self, focused = False, highlight = False):
         for i, (wgt, pos) in enumerate(self.visible_widgets):
-            wgt.render(focused = (i == self.selected_index))
+            wgt.render(focused = focused and (i == self.selected_index))
     
     def _on_key(self, evt):
         sw = self.selected_widget
         if sw and sw.on_event(evt):
             return True
+        # XXX: ctrl up, ctrl down
         elif evt == "ctrl right" and self.selected_index <= len(self.visible_widgets) - 2:
             self.selected_index += 1
         elif evt == "ctrl left" and self.selected_index >= 1:
             self.selected_index -= 1
         return False
-    
+
 
 def HLayout(*widgets):
     return Layout(Layout.HORIZONTAL, widgets)
 
 def VLayout(*widgets):
     return Layout(Layout.VERTICAL, widgets)
+
+class GridLayout(Widget):
+    # TODO
+    pass
+
 
 
 
