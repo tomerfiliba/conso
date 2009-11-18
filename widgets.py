@@ -64,7 +64,7 @@ class TextEntry(Widget):
         return (pwidth, 1)
     def get_min_size(self, pwidth, pheight):
         return (3, 1)
-    def render(self, focused = True, highlight = False):
+    def render(self, focused = False, highlight = False):
         w = self.canvas.width
         
         if self.cursor_offset > self.end_offset or self.cursor_offset < self.start_offset:
@@ -112,8 +112,10 @@ class TextEntry(Widget):
             return True
         elif evt == "home":
             self.cursor_offset = 0
+            return True
         elif evt == "end":
             self.cursor_offset = len(self.text)
+            return True
         elif not self.max_length or len(self.text) < self.max_length:
             ch = evt.as_char()
             if ch:
@@ -143,10 +145,6 @@ class Button(Widget):
             self.callback(self)
             return True
         return False
-    
-    def _on_mouse(self, evt):
-        if evt.btn == evt.BTN_RELEASE:
-            pass
 
 class Container(Widget):
     def __init__(self, body, title = None, border = False):
@@ -172,7 +170,8 @@ class Container(Widget):
     def remodel(self, canvas):
         self.canvas = canvas
         if self.border:
-            self.title.remodel(canvas.subcanvas(1, 0, canvas.width-2, 1))
+            w, h = self.title.get_desired_size(self.canvas.width, self.canvas.height)
+            self.title.remodel(canvas.subcanvas(1, 0, min(w, canvas.width-2), 1))
             body_canvas = canvas.subcanvas(1, 1, canvas.width-2, canvas.height-2)
         else:
             body_canvas = canvas
@@ -192,12 +191,57 @@ def Frame(title, body):
     return Container(body, title = Label(title), border = True)
 
 class TabBox(Widget):
-    def __init__(self, widgets):
+    def __init__(self, widgets, selected_index = 0):
         self.widgets = widgets
         self.selected_index = 0
+        self.is_selected_focused = False
     
-    def select(self):
-        pass
+    def get_selected_widget(self):
+        if selected_index < 0 or self.selected_index >= len(self.widgets):
+            return None
+        return self.widgets[self.selected_index]
+    
+    def get_min_size(self, pwidth, pheight):
+        sw = self.get_selected_widget()
+        if not sw:
+            return (5, 4)
+        w, h = sw.get_min_size(pwidth-2, pheight-3)
+        return w + 2, h + 4
+    def get_desired_size(self, pwidth, pheight):
+        sw = self.get_desired_size()
+        if not sw:
+            return (pwidth, pheight)
+        w, h = sw.get_desired_size(pwidth-2, pheight-3)
+        return w + 2, h + 4
+    
+    def remodel(self, canvas):
+        self.canvas = canvas
+        if self.border:
+            w, h = self.title.get_desired_size(self.canvas.width, self.canvas.height)
+            self.title.remodel(canvas.subcanvas(1, 0, min(w, canvas.width-2), 1))
+            body_canvas = canvas.subcanvas(1, 1, canvas.width-2, canvas.height-2)
+        else:
+            body_canvas = canvas
+        self.body.remodel(body_canvas)
+    
+    def render(self, focused = False, highlight = False):
+        if self.border:
+            self.canvas.draw_border()
+            self.title.render(highlight = highlight or focused)
+        self.body.render(focused = focused)
+    def _on_key(self, evt):
+        sw = self.get_selected_widget()
+        if sw and sw.on_event(evt):
+            return True
+        
+        if evt == "esc":
+            self.is_selected_focused = False
+        elif evt == "tab":
+            self.is_selected_focused = False
+        elif evt == "shift tab":
+            self.is_selected_focused = False
+
+
 
 class ListModel(object):
     def hasitem(self, index):
@@ -211,7 +255,11 @@ class SimpleListModel(object):
     def hasitem(self, index):
         return index >= 0 and index < len(self.list)
     def getitem(self, index):
-        return Label(self.list[index])
+        item = self.list[index]
+        if not isinstance(item, Widget):
+            return Label(str(item))
+        else:
+            return item
 
 class ListBox(Widget):
     def __init__(self, model):
@@ -227,20 +275,21 @@ class ListBox(Widget):
         return (pwidth, pheight)
     def remodel(self, canvas):
         self.canvas = canvas
-        self.canvas2 = canvas.subcanvas(1,0, canvas.width-1, canvas.height-1)
+        self.canvas2 = canvas
+        #self.canvas2 = self.canvas.subcanvas(2,0, canvas.width-2, canvas.height-1)
     def render(self, focused = False, highlight = False):
-        offy = 0
         if self.selected_index < self.start_index or self.selected_index > self.last_index:
             self.last_index = None
             self.start_index = max(0, self.selected_index - 5)
         
-        self.canvas.draw_vline(0, 0, char = self.canvas.DOT)
-        self.canvas.write(0, 0, u"\u2191")
-        self.canvas.write(0, self.canvas.height - 1, u"\u2193")
-        self.canvas.draw_hline(2, self.canvas.height - 1, char = self.canvas.DOT)
-        self.canvas.write(1, self.canvas.height - 1, u"\u2190")
-        self.canvas.write(self.canvas.width - 1, self.canvas.height - 1, u"\u2192")
-        
+        #self.canvas.draw_vline(0, 0, char = self.canvas.LEFT_HALF_BLOCK)
+        #self.canvas.write(0, 0, u"\u2191")
+        #self.canvas.write(0, self.canvas.height - 1, u"\u2193")
+        #self.canvas.draw_hline(2, self.canvas.height - 1, char = self.canvas.LOWER_HALF_BLOCK)
+        #self.canvas.write(1, self.canvas.height - 1, u"\u2190")
+        #self.canvas.write(self.canvas.width - 1, self.canvas.height - 1, u"\u2192")
+
+        offy = 0
         i = self.start_index
         while self.model.hasitem(i) and offy < self.canvas2.height:
             self.last_index  = i
@@ -248,25 +297,36 @@ class ListBox(Widget):
             dw, dh = item.get_desired_size(self.canvas2.width, self.canvas2.height)
             canvas3 = self.canvas2.subcanvas(self.hor_offset, offy, dw, dh)
             item.remodel(canvas3)
-            item.render(highlight = focused and (i == self.selected_index))
+            if i == self.selected_index:
+                item.render(focused = self.is_selected_focused, highlight = focused)
+            else:
+                item.render()
             i += 1
-            offy += self.canvas2.height
+            offy += canvas3.height
     
     def _on_key(self, evt):
         if self.is_selected_focused:
             item = self.model.getitem(self.selected_index)
             if item.on_event(evt):
                 return True
+        
+        if evt == "esc":
+            self.is_selected_focused = False
+            return True
         elif evt == "down" and self.model.hasitem(self.selected_index + 1):
+            self.is_selected_focused = False
             self.selected_index += 1
             return True
         elif evt == "up" and self.selected_index >= 1:
+            self.is_selected_focused = False
             self.selected_index -= 1
             return True
         elif evt == "left":
             self.hor_offset += 1
+            return True
         elif evt == "right":
             self.hor_offset -= 1
+            return True
         elif evt == "pagedown":
             if not self.model.hasitem(self.selected_index + 1):
                 return False
@@ -275,17 +335,16 @@ class ListBox(Widget):
                 if not self.model.hasitem(self.selected_index + 1):
                     break
                 self.selected_index += 1
+            self.is_selected_focused = False
             return True
         elif evt == "pageup" and self.selected_index >= 1:
             self.selected_index = max(0, self.selected_index - self.canvas.height)
+            self.is_selected_focused = False
             return True
         elif evt == "enter" and self.model.hasitem(self.selected_index):
             item = self.model.getitem(self.selected_index)
             if item.is_interactive():
                 self.is_selected_focused = True
-            return True
-        elif evt == "esc":
-            self.is_selected_focused = False
             return True
         return False
 
@@ -296,6 +355,7 @@ class Layout(Widget):
     def __init__(self, axis, widgets):
         self.axis = axis
         self.widgets = widgets
+        self.visible_widgets = None
         self.selected_index = None
         self.is_selected_focused = True
     
@@ -306,9 +366,17 @@ class Layout(Widget):
         return w, h
     
     def get_desired_size(self, pwidth, pheight):
-        return (pwidth, pheight)
+        if self.visible_widgets:
+            return max(wgt[0].get_desired_size(pwidth, pheight) for wgt in self.visible_widgets)
+        else:
+            return (pwidth, pheight)
     
-    def _calc_visible_widgets(self, total_size):
+    def _calc_visible_widgets(self, canvas):
+        if self.axis == self.HORIZONTAL:
+            total_size = canvas.width
+        else:
+            total_size = canvas.height
+        
         widgets = sorted(self.widgets, key = lambda w: w.get_priority())
         while True:
             output = []
@@ -319,10 +387,10 @@ class Layout(Widget):
                 alloted = min(alloted, total_size - accumulated_size)
                 accumulated_size += alloted
                 assert accumulated_size <= total_size
-                min_size = wgt.get_min_size(self.canvas.width, self.canvas.height)[self.axis]
-                max_size = wgt.get_desired_size(self.canvas.width, self.canvas.height)[self.axis]
+                min_size = wgt.get_min_size(canvas.width, canvas.height)[self.axis]
+                max_size = wgt.get_desired_size(canvas.width, canvas.height)[self.axis]
                 if alloted > max_size:
-                    max_alloted = max_size
+                    alloted = max_size
                 if alloted < min_size:
                     del widgets[i]
                     break
@@ -331,9 +399,8 @@ class Layout(Widget):
                 break
         return output[::-1]
     
-    @property
-    def selected_widget(self):
-        if self.is_selected_focused:
+    def get_selected_widget(self):
+        if not self.is_selected_focused:
             return None
         if self.selected_index < 0 or self.selected_index >= len(self.visible_widgets):
             return None
@@ -345,7 +412,7 @@ class Layout(Widget):
         visible_set = set()
         if self.axis == self.HORIZONTAL:
             offx = 0
-            for wgt, alloted in self._calc_visible_widgets(canvas.width):
+            for wgt, alloted in self._calc_visible_widgets(canvas):
                 canvas2 = canvas.subcanvas(offx, 0, alloted, canvas.height)
                 wgt.remodel(canvas2)
                 self.visible_widgets.append((wgt, (offx, 0, canvas2.width, canvas2.height)))
@@ -353,7 +420,7 @@ class Layout(Widget):
                 offx += alloted
         else:
             offy = 0
-            for wgt, alloted in self._calc_visible_widgets(canvas.height):
+            for wgt, alloted in self._calc_visible_widgets(canvas):
                 canvas2 = canvas.subcanvas(0, offy, canvas.width, alloted)
                 wgt.remodel(canvas2)
                 self.visible_widgets.append((wgt, (0, offy, canvas2.width, canvas2.height)))
@@ -364,25 +431,25 @@ class Layout(Widget):
     
     def render(self, focused = False, highlight = False):
         for i, (wgt, pos) in enumerate(self.visible_widgets):
-            wgt.render(focused = focused and (i == self.selected_index))
+            wgt.render(focused = focused and (i == self.selected_index), highlight = highlight)
     
     def _on_key(self, evt):
-        sw = self.selected_widget
+        sw = self.get_selected_widget()
         if sw and sw.on_event(evt):
             return True
         
         if self.axis == self.HORIZONTAL:
-            next = "right"
-            prev = "left"
+            next = "ctrl right"
+            prev = "ctrl left"
         else:
-            next = "down"
-            prev = "up"
+            next = "ctrl down"
+            prev = "ctrl up"
         
-        if evt == next and self.selected_index <= len(self.visible_widgets) - 2:
+        if (evt == "tab" or evt == next) and self.selected_index <= len(self.visible_widgets) - 2:
             self.selected_index += 1
             self.is_selected_focused = True
             return True
-        elif evt == prev and self.selected_index >= 1:
+        elif (evt == "shift tab" or evt == prev) and self.selected_index >= 1:
             self.selected_index -= 1
             self.is_selected_focused = True
             return True
@@ -397,24 +464,24 @@ def HLayout(*widgets):
 def VLayout(*widgets):
     return Layout(Layout.VERTICAL, widgets)
 
-class Fixed(Container):
-    HORIZONTAL = 0
-    VERTICAL = 1
-    
-    def __init__(self, body, axis):
-        Container.__init__(self, body, title = None, border = False)
-        self.axis = axis
-    def get_desired_size(self, pwidth, pheight):
-        d = list(self.body.get_desired_size(pwidth, pheight))
-        m = self.body.get_min_size(pwidth, pheight)
-        d[self.axis] = min(d[self.axis], m[self.axis])
-        return tuple(d)
-
-def HFixed(body):
-    return Fixed(body, Fixed.HORIZONTAL)
-
-def VFixed(body):
-    return Fixed(body, Fixed.HORIZONTAL)
+#class Fixed(Container):
+#    HORIZONTAL = 0
+#    VERTICAL = 1
+#    
+#    def __init__(self, body, axis):
+#        Container.__init__(self, body, title = None, border = False)
+#        self.axis = axis
+#    def get_desired_size(self, pwidth, pheight):
+#        d = list(self.body.get_desired_size(pwidth, pheight))
+#        m = self.body.get_min_size(pwidth, pheight)
+#        d[self.axis] = min(d[self.axis], m[self.axis])
+#        return tuple(d)
+#
+#def HFixed(body):
+#    return Fixed(body, Fixed.HORIZONTAL)
+#
+#def VFixed(body):
+#    return Fixed(body, Fixed.HORIZONTAL)
 
 
 
@@ -427,14 +494,14 @@ if __name__ == "__main__":
     def g(sender):
         raise Exception("bye there")
 
-    #ListBox(SimpleListModel(["hello", "world", "zorld", "kak", "shmak", "flap", "zap"] * 10)),
+    #r = ListBox(SimpleListModel(["hello", "world", "zorld", "kak", "shmak"*20, "flap", "zap"] * 10))
     
     r = VLayout(
         Frame("foo",
             Button("hi", f)
         ),
         Frame("the list",
-            ListBox(SimpleListModel(["aaa", "bb", "cccc", "dddddd", "eee", "fffffff", "g"] * 10)),
+            ListBox(SimpleListModel([TextEntry("foo"), TextEntry("bar")])),
         ),
         HLayout(
             Button("? Help", None),

@@ -13,10 +13,10 @@ class Canvas(object):
     UPPER_HALF_BLOCK = u"\u2580"
     HOR_LINE = u"\u2500"
     VER_LINE = u"\u2502"
-    LEFT_UPPER_CORNER = u"\u250C"
-    RIGHT_UPPER_CORNER = u"\u2510"
-    LEFT_LOWER_CORNER = u"\u2514"
-    RIGHT_LOWER_CORNER = u"\u2518"
+    LEFT_UPPER_CORNER = u"\u256D" #u"\u250C"
+    RIGHT_UPPER_CORNER = u"\u256E" #u"\u2510"
+    LEFT_LOWER_CORNER = u"\u2570" #u"\u2514"
+    RIGHT_LOWER_CORNER = u"\u256F" #u"\u2518"
     DOT = u"\u00B7"
     
     def __init__(self, parent, offx, offy, width, height):
@@ -118,8 +118,8 @@ if __name__ == "__main__":
     with Terminal(use_mouse = False) as term:
         rc = term.get_root_canvas()
         c = rc.subcanvas()
-        c2 = c.draw_border()
-        c2.write(0, 0, "hello     ", fg="red", inversed = True)
+        c.draw_border()
+        c.write(3, 3, "hello     ", fg="red", inversed = True)
         rc.commit()
 
         while True:
