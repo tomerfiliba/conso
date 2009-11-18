@@ -268,7 +268,7 @@ class Application(CliApplication):
                     break
                 else:
                     self.root.on_event(evt)
-                self.root.render()
+                self.root.render(focused = True)
                 root_canvas.commit()
             term.clear_screen()
 

@@ -31,8 +31,6 @@ class KeyEvent(TerminalEvent):
 
     def as_char(self):
         if self.flags == 0:
-            if self.name == "enter":
-                return "\n"
             if len(self.name) == 1:
                 return self.name
         return None

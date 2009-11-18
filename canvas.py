@@ -49,11 +49,15 @@ class Canvas(object):
     #=========================================================================
     # box drawing
     #=========================================================================
-    def draw_hline(self, x, y, length, **attrs):
-        self.write(x, y, self.HOR_LINE * length, **attrs)
-    def draw_vline(self, x, y, length, attrs = None):
+    def draw_hline(self, x, y, length = None, char = HOR_LINE, **attrs):
+        if length is None:
+            length = self.width
+        self.write(x, y, char * length, **attrs)
+    def draw_vline(self, x, y, length = None, char = VER_LINE, **attrs):
+        if length is None:
+            length = self.height
         for i in range(length):
-            self.write(x, y + i, self.VER_LINE, **attrs)
+            self.write(x, y + i, char, **attrs)
     def draw_box(self, x, y, w, h, **attrs):
         self.draw_hline(x, y, w, **attrs)
         self.draw_hline(x, y + h, w, **attrs)
@@ -65,7 +69,7 @@ class Canvas(object):
         self.write(x+w, y+h, self.RIGHT_LOWER_CORNER, **attrs)
     def draw_border(self):
         self.draw_box(0, 0, self.width - 1, self.height - 1)
-        return self.subcanvas(1, 1, self.width - 2, self.height - 2)
+        #return self.subcanvas(1, 1, self.width - 2, self.height - 2)
     
     def clear_line(self, y, **attrs):
         self.write(0, y, " " * self.width, **attrs)
@@ -115,17 +119,12 @@ if __name__ == "__main__":
         rc = term.get_root_canvas()
         c = rc.subcanvas()
         c2 = c.draw_border()
-        c2.write(0, 0, "hello     ", dict(fg="red", inversed = True))
+        c2.write(0, 0, "hello     ", fg="red", inversed = True)
         rc.commit()
 
         while True:
-            if term.get_event() != ResizedEvent:
+            if term.get_event() == "q":
                 break
-
-
-
-
-
 
 
 

@@ -249,15 +249,24 @@ class Terminal(object):
     def get_size(self):
         return self._width, self._height
     
-    def get_event(self, timeout = None):
+    def _get_event(self, timeout):
         if not self._events:
             self._wait_input(timeout)
         data = self._read_all()
         output = self._decoder.decode(data)
         if output:
             self._events.extend(terminal_keys_trie.decode(output))
+    
+    def get_event(self, timeout = None, char_completion_timeout = 0.05):
+        # note that we might get a ResizedEvent at any given time
+        self._get_event(timeout)
+        if not self._events:
+            self._get_event(char_completion_timeout)
+            if not self._events:
+                evt = terminal_keys_trie.pull()
+                if evt:
+                    self._events.append(evt)
         
-        # note that we might have a queued ResizedEvent event here as well
         return self._events.pop(0) if self._events else None
 
     def write(self, x, y, text, attrs = {}):
@@ -281,7 +290,7 @@ class Terminal(object):
 
     def reset_attrs(self):
         self._attrs = dict(fg = None, bg = None, underlined = False,
-            bold = False, inversed = False, dim = False)
+            bold = False, blink = False, inversed = False, dim = False)
         self._write(self.RESET_ATTRS)
     
     def get_root_canvas(self):
