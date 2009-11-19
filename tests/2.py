@@ -10,7 +10,7 @@ def g(sender):
 #r = ListBox(SimpleListModel(["hello", "world", "zorld", "kak", "shmak"*20, "flap", "zap"] * 10))
 
 r = VLayout(
-    Frame("foo",
+    Frame("foobar"*30,
         #Button("hi", f)
         ProgressBar(70),
     ),

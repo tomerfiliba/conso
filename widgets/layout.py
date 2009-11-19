@@ -82,9 +82,9 @@ class Layout(Widget):
         
         self.selected_index = 0
     
-    def render(self, focused = False, highlight = False):
+    def render(self, style, focused = False, highlight = False):
         for i, (wgt, pos) in enumerate(self.visible_widgets):
-            wgt.render(focused = focused and (i == self.selected_index), highlight = highlight)
+            wgt.render(style, focused = focused and (i == self.selected_index), highlight = highlight)
     
     def _on_key(self, evt):
         sw = self.get_selected_widget()
@@ -116,3 +116,6 @@ def HLayout(*widgets):
 
 def VLayout(*widgets):
     return Layout(Layout.VERTICAL, widgets)
+
+
+

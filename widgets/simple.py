@@ -15,7 +15,7 @@ class Label(Widget):
         return False
     def remodel(self, canvas):
         self.canvas = canvas
-    def render(self, focused = False, highlight = False):
+    def render(self, style, focused = False, highlight = False):
         padded = self.text + " " * (self.canvas.width - len(self.text))
         self.canvas.write(0, 0, padded, fg = self.fg, bg = self.bg, inversed = highlight)
 
@@ -32,7 +32,7 @@ class TextEntry(Widget):
         return (pwidth, 1)
     def get_min_size(self, pwidth, pheight):
         return (3, 1)
-    def render(self, focused = False, highlight = False):
+    def render(self, style, focused = False, highlight = False):
         w = self.canvas.width
         
         if self.cursor_offset < self.start_offset or \
@@ -108,7 +108,7 @@ class Button(Widget):
         return (3, 1)
     def get_desired_size(self, pwidth, pheight):
         return (len(self.text) + 2, 1)
-    def render(self, focused = False, highlight = True):
+    def render(self, style, focused = False, highlight = True):
         text = u"\u258C%s\u2590" % (self.text[:self.canvas.width-2],)
         self.canvas.write(0, 0, text, fg = "yellow" if focused else None)
     
@@ -136,7 +136,7 @@ class ProgressBar(Widget):
         return False
     def remodel(self, canvas):
         self.canvas = canvas
-    def render(self, focused = False, highlight = False):
+    def render(self, style, focused = False, highlight = False):
         full = int((self.percentage * self.canvas.width) / 100)
         empty = self.canvas.width - full
         text = self.canvas.FULL_BLOCK * full + self.canvas.LIGHT_SHADE * empty
@@ -154,5 +154,25 @@ class ProgressBar(Widget):
                     self.canvas.write(i, 0, text[i])
         else:
             self.canvas.write(0, 0, text)
+
+
+class CheckButton(Widget):
+    pass
+
+
+class ChoiceButton(Widget):
+    pass
+
+
+
+
+
+
+
+
+
+
+
+
 
 

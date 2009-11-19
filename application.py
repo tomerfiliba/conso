@@ -1,8 +1,8 @@
 import sys
 import inspect
 from textwrap import wrap
-from terminal import Terminal
-from events import KeyEvent, MouseEvent, ResizedEvent
+from .terminal import Terminal
+from .events import ResizedEvent
 
 
 class SwitchParsingError(Exception):
@@ -25,6 +25,7 @@ class MandatorySwitchNotGiven(SwitchParsingError):
 class SwitchGivenMoreThanOnce(SwitchParsingError):
     MSG = "Switch %r (or an alias) given more than once"
 
+# XXX: excludes and requires !
 
 def switch(names, type = None, doc = None, multiple = False, mandatory = False, 
         overriding = False, excludes = (), requires = ()):
@@ -249,9 +250,10 @@ class CliApplication(object):
 
     
 class Application(CliApplication):
-    def __init__(self, root):
+    def __init__(self, root, style = {}):
         CliApplication.__init__(self)
         self.root = root
+        self.style = style
 
     def main(self):
         self._mainloop()
@@ -269,7 +271,7 @@ class Application(CliApplication):
                     break
                 else:
                     self.root.on_event(evt)
-                self.root.render(focused = True)
+                self.root.render(self.style, focused = True)
                 root_canvas.commit()
             term.clear_screen()
 

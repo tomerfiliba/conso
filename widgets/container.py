@@ -1,13 +1,12 @@
 from .base import Widget
-from . import simple
 
 
 class Frame(Widget):
     def __init__(self, title, body):
-        if not isinstance(title, Widget):
-            title = simple.Label(title)
         self.title = title
         self.body = body
+    def is_interactive(self):
+        return self.body.is_interactive()
     def get_min_size(self, pwidth, pheight):
         w, h = self.body.get_min_size(pwidth-2, pheight-2)
         return w+2, h+2
@@ -16,21 +15,15 @@ class Frame(Widget):
         return w+2, h+2
     def get_priority(self):
         return self.body.get_priority()
-    def set_priority(self, priority):
-        self.body.set_priority(priority)
     def remodel(self, canvas):
         self.canvas = canvas
-        w, h = self.title.get_desired_size(self.canvas.width, self.canvas.height)
-        self.title.remodel(canvas.subcanvas(1, 0, min(w, canvas.width-2), 1))
         self.body.remodel(canvas.subcanvas(1, 1, canvas.width-2, canvas.height-2))
-    def render(self, focused = False, highlight = False):
+    def render(self, style, focused = False, highlight = False):
         self.canvas.draw_border()
-        self.title.render(highlight = highlight or focused)
-        self.body.render(focused = focused)
+        self.canvas.write(1,0,self.title[:self.canvas.width-2])
+        self.body.render(style, focused = focused)
     def on_event(self, evt):
         return self.body.on_event(evt)
-    def is_interactive(self):
-        return self.body.is_interactive()
 
 
 class TabBox(Widget):
@@ -58,11 +51,11 @@ class TabBox(Widget):
         if sw:
             sw.remodel(canvas)
     
-    def render(self, focused = False, highlight = False):
+    def render(self, style, focused = False, highlight = False):
         if self.border:
             self.canvas.draw_border()
-            self.title.render(highlight = highlight or focused)
-        self.body.render(focused = focused)
+            self.title.render(style, highlight = highlight or focused)
+        self.body.render(style, focused = focused)
     
     def _on_key(self, evt):
         sw = self.get_selected_widget()
@@ -113,7 +106,7 @@ class ListBox(Widget):
         return (pwidth, pheight)
     def remodel(self, canvas):
         self.canvas = canvas
-    def render(self, focused = False, highlight = False):
+    def render(self, style, focused = False, highlight = False):
         if self.selected_index < self.start_index or self.selected_index > self.last_index:
             self.last_index = None
             self.start_index = self.selected_index
@@ -134,9 +127,9 @@ class ListBox(Widget):
             canvas2 = self.canvas.subcanvas(self.hor_offset, offy, dw, dh)
             item.remodel(canvas2)
             if i == self.selected_index:
-                item.render(focused = focused and self.is_selected_focused, highlight = focused)
+                item.render(style, focused = focused and self.is_selected_focused, highlight = focused)
             else:
-                item.render()
+                item.render(style)
             i += 1
             offy += canvas2.height
     
@@ -190,6 +183,23 @@ class ListBox(Widget):
                     self.is_selected_focused = True
             return True
         return False
+
+
+class ComboBox(Widget):
+    pass
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
