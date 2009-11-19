@@ -271,19 +271,20 @@ class Terminal(object):
 
     def write(self, x, y, text, attrs = {}):
         reset = False
-        caps = [self.CURSOR_MOVE(x, y)]
         for key, val in self._attrs.iteritems():
             new = attrs.get(key, None)
             if new != val:
                 reset = True
                 self._attrs[key] = new
-                if new:
-                    if type(new) is bool:
+        caps = [self.CURSOR_MOVE(x, y)]
+        if reset:
+            caps.append(self.RESET_ATTRS)
+            for key, val in self._attrs.iteritems():
+                if val:
+                    if type(val) is bool:
                         caps.append(self.TEXT_ATTRS[key])
                     else:
-                        caps.append(self.TEXT_ATTRS[key][new])
-        if reset:
-            caps.insert(0, self.RESET_ATTRS)
+                        caps.append(self.TEXT_ATTRS[key][val])
         text2 = [ch if ord(ch) >= 32 else u"\ufffd" for ch in text]
         data = "".join(caps) + "".join(text2)
         self._write(data)
@@ -315,7 +316,7 @@ if __name__ == "__main__":
             if i >= t._height:
                 t.clear_screen()
                 i = 0
-            t.write(0, i, str(evt), dict(fg = "blue" if i % 2 else "red"))
+            t.write(0, i, str(evt), dict(fg = ("blue" if i % 2 else "red"), inversed = True))
             i += 1
 
 

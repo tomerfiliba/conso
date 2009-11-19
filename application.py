@@ -264,6 +264,7 @@ class Application(CliApplication):
                 if evt == ResizedEvent:
                     root_canvas = term.get_root_canvas()
                     self.root.remodel(root_canvas)
+                    term.clear_screen()
                 elif evt == "ctrl q":
                     break
                 else:
