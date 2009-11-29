@@ -4,10 +4,6 @@ from conso.events import KeyEvent, MouseEvent
 class Widget(object):
     __slots__ = ["canvas"]
     
-    def get_priority(self):
-        # XXX: remove this method
-        return 500
-    
     def is_interactive(self):
         return True
     def get_min_size(self, pwidth, pheight):

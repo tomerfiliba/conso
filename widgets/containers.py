@@ -185,12 +185,33 @@ class ListBox(Widget):
         return False
 
 
-class ComboBox(Widget):
-    pass
+#class ComboBox(Widget):
+#    pass
 
 
+class ActionBox(Widget):
+    def __init__(self, widget, actions):
+        self.widget = widget
+        self.actions = actions
+        self.description = VLayout(
+            
+        )
+    def remodel(self, canvas):
+        self.widget.remodel(canvas)
+    def render(self, focused = False, highlight = False):
+        self.widget.render(focused = focused, highlight = highlight)
+    def get_min_size(self, pwidth, pheight):
+        return self.widget.get_min_size(pwidth, pheight)
+    def get_desired_size(self, pwidth, pheight):
+        return self.widget.get_desired_size(pwidth, pheight)
 
-
+    def _on_key(self, evt):
+        if self.widget.on_event(evt):
+            return True
+        elif evt == "?":
+            pass
+        
+        return False
 
 
 

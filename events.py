@@ -22,17 +22,12 @@ class KeyEvent(TerminalEvent):
         self.flags = flags
     @classmethod
     def from_string(cls, text):
-        attrs = text.split()
-        names = {"ctrl" : CTRL, "control" : CTRL, "meta" : ALT, "alt" : ALT, "shift" : SHIFT}
-        flags = 0
-        for attr in attrs[:-1]:
-            flags |= names.get(attr.lower(), 0)
-        return cls(attrs[-1], flags)
+        name, flags = canonize_keystring(text)
+        return cls(name, flags)
 
     def as_char(self):
-        if self.flags == 0:
-            if len(self.name) == 1:
-                return self.name
+        if self.flags == 0 and len(self.name) == 1:
+            return self.name
         return None
 
     def __repr__(self):
@@ -52,7 +47,7 @@ class KeyEvent(TerminalEvent):
         if isinstance(other, KeyEvent):
             return self.name == other.name and self.flags == other.flags
         elif isinstance(other, basestring):
-            return self == self.from_string(other)
+            return (self.name, self.flags) == canonize_keystring(other)
         else:
             return NotImplemented
     def __ne__(self, other):
@@ -136,6 +131,47 @@ keys = {
     "\x1b[M" : _get_mouse_1,
 }
 
+canonization_table = {
+    (CTRL, "i")     : (0, u"tab"),
+    (CTRL, "enter") : (CTRL, u"j"),
+    (CTRL, "7")     : (CTRL, u"?"),
+    (CTRL, "[")     : (0, u"esc"),
+    (CTRL, "h")     : (0, u"backspace"),
+    (CTRL, "8")     : (0, u"backspace"),
+    (CTRL, "`")     : (CTRL, u" "),
+    (CTRL, "~")     : (CTRL, u" "),
+    (CTRL, "2")     : (CTRL, u" "),
+    (CTRL, "-")     : (CTRL, u" "),
+    (CTRL, "m")     : (0, u"enter"),
+    (CTRL, "4")     : (CTRL, u"|"),
+    (CTRL, "5")     : (CTRL, u"]"),
+    (CTRL, "7")     : (CTRL, u"?"),
+}
+
+ATTR_NAMES = {"ctrl" : CTRL, "control" : CTRL, "meta" : ALT, "alt" : ALT, "shift" : SHIFT}
+
+def canonize_keystring(text):
+    if not text:
+        return "", 0
+    
+    attrs = text.split()
+    i = text.rfind(" ")
+    attrs = text[:i].split()
+    name = text[i+1:].strip()
+    
+    flags = 0
+    for attr in attrs:
+        flags |= ATTR_NAMES[attr.lower()]
+    
+    if len(name) > 1:
+        name = name.lower()
+    if name == "space":
+        name = " "
+    if (flags, name) in canonization_table:
+        flags, name = canonization_table[flags, name]
+    return name, flags
+
+
 for k, ch in [("\x00", u" "), ("\x01", u"a"), ("\x02", u"b"), ("\x03", u"c"),
         ("\x04", u"d"), ("\x05", u"e"), ("\x06", u"f"), ("\x07", u"g"),
         ("\x0a", u"j"), ("\x0b", u"k"), ("\x0c", u"l"), ("\x0e", u"n"),
@@ -185,7 +221,7 @@ class KeysTrie(object):
     def _build_trie(cls, mapping, seq, value):
         if not seq:
             if None in mapping:
-                raise ValueError("seq already defined")
+                raise ValueError("sequence already defined")
             mapping[None] = value
         else:
             item = seq.pop(0)

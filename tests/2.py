@@ -10,18 +10,18 @@ def g(sender):
 #r = ListBox(SimpleListModel(["hello", "world", "zorld", "kak", "shmak"*20, "flap", "zap"] * 10))
 
 r = VLayout(
-    Frame("foobar"*30,
+    LayoutInfo(Frame("foobar"*30,
         #Button("hi", f)
         ProgressBar(70),
-    ),
-    Frame("the list",
+    )),
+    LayoutInfo(Frame("the list",
         ListBox(SimpleListModel([TextEntry("foo%d" % (i,)) for i in range(30)])),
-    ),
-    HLayout(
+    )),
+    LayoutInfo(HLayout(
         Button("? Help", None),
         Button("Ctrl Q Quit", g),
-    ),
-    TextEntry("moshe"),
+    )),
+    LayoutInfo(TextEntry("moshe")),
 )
 
 app = conso.Application(r)

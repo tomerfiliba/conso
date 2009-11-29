@@ -1,19 +1,29 @@
 from .base import Widget
+import itertools
 
+
+class LayoutInfo(object):
+    _counter = itertools.count()
+    __slots__ = ["widget", "alignment", "priority", "order"]
+    def __init__(self, widget, alignment = "first", priority = 100):
+        self.widget = widget
+        self.alignment = alignment
+        self.priority = priority
+        self.order = self._counter.next()
 
 class Layout(Widget):
     HORIZONTAL = 0
     VERTICAL = 1
     
-    def __init__(self, axis, widgets):
+    def __init__(self, axis, widget_infos):
         self.axis = axis
-        self.widgets = widgets
+        self.widget_infos = widget_infos
         self.visible_widgets = None
         self.selected_index = None
         self.is_selected_focused = True
     
     def get_min_size(self, pwidth, pheight):
-        sizes = [w.get_min_size(pwidth, pheight) for w in self.widgets]
+        sizes = [wi.widget.get_min_size(pwidth, pheight) for wi in self.widget_infos]
         w = sum(s[self.axis] for s in sizes)
         h = max(s[1 - self.axis] for s in sizes)
         return w, h
@@ -30,24 +40,28 @@ class Layout(Widget):
         else:
             total_size = canvas.height
         
-        widgets = sorted(self.widgets, key = lambda w: w.get_priority())
+        widget_infos = sorted(self.widget_infos, key = lambda wi: wi.priority)
         while True:
             output = []
-            total_priorities = float(sum(w.get_priority() for w in widgets))
+            total_priorities = float(sum(wi.priority for wi in widget_infos))
             accumulated_size = 0
-            for i, wgt in enumerate(widgets):
-                alloted = int(round(total_size * wgt.get_priority() / total_priorities))
+            for i, wi in enumerate(widget_infos):
+                alloted = int(round(total_size * wi.priority / total_priorities))
                 alloted = min(alloted, total_size - accumulated_size)
+                min_size = wi.widget.get_min_size(canvas.width, canvas.height)[self.axis]
+                max_size = wi.widget.get_desired_size(canvas.width, canvas.height)[self.axis]
+                if alloted > max_size:
+                    unused = alloted - max_size
+                    total_size += unused
+                    alloted -= unused
+
                 accumulated_size += alloted
                 assert accumulated_size <= total_size
-                min_size = wgt.get_min_size(canvas.width, canvas.height)[self.axis]
-                max_size = wgt.get_desired_size(canvas.width, canvas.height)[self.axis]
-                if alloted > max_size:
-                    alloted = max_size
+                
                 if alloted < min_size:
-                    del widgets[i]
+                    del widget_infos[i]
                     break
-                output.append((wgt, alloted))
+                output.append((wi.widget, alloted))
             else:
                 break
         return output[::-1]
@@ -62,25 +76,22 @@ class Layout(Widget):
     def remodel(self, canvas):
         self.visible_widgets = []
         self.canvas = canvas
-        visible_set = set()
-        if self.axis == self.HORIZONTAL:
-            offx = 0
-            for wgt, alloted in self._calc_visible_widgets(canvas):
-                canvas2 = canvas.subcanvas(offx, 0, alloted, canvas.height)
-                wgt.remodel(canvas2)
-                self.visible_widgets.append((wgt, (offx, 0, canvas2.width, canvas2.height)))
-                visible_set.add(wgt)
-                offx += alloted
-        else:
-            offy = 0
-            for wgt, alloted in self._calc_visible_widgets(canvas):
-                canvas2 = canvas.subcanvas(0, offy, canvas.width, alloted)
-                wgt.remodel(canvas2)
-                self.visible_widgets.append((wgt, (0, offy, canvas2.width, canvas2.height)))
-                visible_set.add(wgt)
-                offy += alloted
         
-        self.selected_index = 0
+        off = 0
+        for wgt, alloted in self._calc_visible_widgets(canvas):
+            if self.axis == self.HORIZONTAL:
+                canvas2 = canvas.subcanvas(off, 0, alloted, canvas.height)
+            else:
+                canvas2 = canvas.subcanvas(0, off, canvas.width, alloted)
+            
+            wgt.remodel(canvas2)
+            self.visible_widgets.append((wgt, canvas2.get_dims()))
+            off += alloted
+        
+        if self.visible_widgets:
+            self.selected_index = 0
+        else:
+            self.selected_index = None
     
     def render(self, style, focused = False, highlight = False):
         for i, (wgt, pos) in enumerate(self.visible_widgets):
@@ -112,10 +123,14 @@ class Layout(Widget):
         return False
 
 def HLayout(*widgets):
-    return Layout(Layout.HORIZONTAL, widgets)
+    widgets2 = [wgt if isinstance(wgt, LayoutInfo) else LayoutInfo(wgt) 
+        for wgt in widgets]
+    return Layout(Layout.HORIZONTAL, widgets2)
 
 def VLayout(*widgets):
-    return Layout(Layout.VERTICAL, widgets)
+    widgets2 = [wgt if isinstance(wgt, LayoutInfo) else LayoutInfo(wgt) 
+        for wgt in widgets]
+    return Layout(Layout.VERTICAL, widgets2)
 
 
 

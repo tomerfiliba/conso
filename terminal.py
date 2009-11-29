@@ -40,6 +40,7 @@ class Terminal(object):
         self._termtype = termtype
         self._raw_mode = raw_mode
         self._use_mouse = use_mouse
+        self._buffer = ""
         # state
         self._events = []
         if not self.encoding or self.encoding == "ascii":
@@ -286,8 +287,12 @@ class Terminal(object):
                     else:
                         caps.append(self.TEXT_ATTRS[key][val])
         text2 = [ch if ord(ch) >= 32 else u"\ufffd" for ch in text]
-        data = "".join(caps) + "".join(text2)
-        self._write(data)
+        self._buffer += "".join(caps) + "".join(text2)
+
+    def commit(self):
+        if self._buffer:
+            self._write(self._buffer)
+            self._buffer = ""
 
     def reset_attrs(self):
         self._attrs = dict(fg = None, bg = None, underlined = False,
@@ -317,6 +322,7 @@ if __name__ == "__main__":
                 t.clear_screen()
                 i = 0
             t.write(0, i, str(evt), dict(fg = ("blue" if i % 2 else "red"), inversed = True))
+            t.commit()
             i += 1
 
 

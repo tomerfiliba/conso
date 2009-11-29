@@ -30,6 +30,9 @@ class Canvas(object):
             width = max(width, 0)
         self.height = height
     
+    def get_dims(self):
+        return self.offx, self.offy, self.width, self.height
+    
     def write(self, x, y, text, **attrs):
         if y < 0 or y > self.height and self.height is not None:
             return
@@ -83,6 +86,9 @@ class RootCanvas(Canvas):
         self.height = height
         self.new_buffer = self._get_empty_buffer()
         self.old_buffer = self._get_empty_buffer()
+
+    def get_dims(self):
+        return 0, 0, self.width, self.height
     
     def _get_empty_buffer(self):
         return [[self.EMPTY_CHAR] * self.width for i in range(self.height)]
@@ -95,6 +101,7 @@ class RootCanvas(Canvas):
                 if new != old:
                     ch, attrs = new
                     self.term.write(x, y, ch, attrs)
+        self.term.commit()
         self.old_buffer = self.new_buffer
         self.new_buffer = self._get_empty_buffer()
     

@@ -1,6 +1,6 @@
 from .base import Widget
-from .simple import Label, Button, TextEntry, ProgressBar
-from .container import TabBox, ListBox, Frame
-from .container import ListModel, SimpleListModel
-from .layout import HLayout, VLayout
+from .basic import Label, Button, TextEntry, ProgressBar
+from .containers import TabBox, ListBox, Frame
+from .containers import ListModel, SimpleListModel
+from .layouts import HLayout, VLayout, LayoutInfo
 
