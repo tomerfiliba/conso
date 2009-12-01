@@ -1,4 +1,5 @@
 from .base import Widget
+from . import basic
 
 
 class Frame(Widget):
@@ -26,22 +27,37 @@ class Frame(Widget):
         return self.body.on_event(evt)
 
 
+class TabInfo(object):
+    __slots__ = ["title", "widget"]
+    def __init__(self, title, widget):
+        self.title = title
+        self.widget = widget
+
 class TabBox(Widget):
-    def __init__(self, widgets, selected_index = 0):
-        self.widgets = widgets
+    def __init__(self, widgets, show_title = True, selected_index = 0):
+        self.show_title = show_title
+        self.tabs = tabs
         self.selected_index = 0
         self.is_selected_focused = False
     
     def get_selected_widget(self):
-        if selected_index < 0 or self.selected_index >= len(self.widgets):
+        if selected_index < 0 or self.selected_index >= len(self.tabs):
             return None
-        return self.widgets[self.selected_index]
+        return self.tabs[self.selected_index].widget
     def get_min_size(self, pwidth, pheight):
         sw = self.get_selected_widget()
         if not sw:
-            return (5, 4)
-        w, h = sw.get_min_size(pwidth-2, pheight-3)
-        return w + 2, h + 4
+            if self.show_title:
+                return (0, 0)
+            else:
+                return (0, 0)
+        if self.show_title:
+            w, h = sw.get_min_size(pwidth-2, pheight-3)
+            return w + 2, h + 4
+        else:
+            w, h = sw.get_min_size(pwidth, pheight)
+            return w, h
+    
     def get_desired_size(self, pwidth, pheight):
         return (pwidth, pheight)
     
@@ -84,13 +100,14 @@ class ListModel(object):
 class SimpleListModel(ListModel):
     __slots__ = ["list"]
     def __init__(self, list):
-        self.list = [item if isinstance(item, Widget) else Label(str(item)) 
-            for item in list]
+        self.list = list
     def hasitem(self, index):
         return index >= 0 and index < len(self.list)
     def getitem(self, index):
-        return self.list[index]
-
+        item = self.list[index]
+        if not isinstance(item, Widget):
+            item = basic.Label(str(item))
+        return item
 
 class ListBox(Widget):
     def __init__(self, model):
@@ -187,31 +204,6 @@ class ListBox(Widget):
 
 #class ComboBox(Widget):
 #    pass
-
-
-class ActionBox(Widget):
-    def __init__(self, widget, actions):
-        self.widget = widget
-        self.actions = actions
-        self.description = VLayout(
-            
-        )
-    def remodel(self, canvas):
-        self.widget.remodel(canvas)
-    def render(self, focused = False, highlight = False):
-        self.widget.render(focused = focused, highlight = highlight)
-    def get_min_size(self, pwidth, pheight):
-        return self.widget.get_min_size(pwidth, pheight)
-    def get_desired_size(self, pwidth, pheight):
-        return self.widget.get_desired_size(pwidth, pheight)
-
-    def _on_key(self, evt):
-        if self.widget.on_event(evt):
-            return True
-        elif evt == "?":
-            pass
-        
-        return False
 
 
 

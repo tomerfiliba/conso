@@ -22,6 +22,7 @@ r = VLayout(
         Button("Ctrl Q Quit", g),
     )),
     LayoutInfo(TextEntry("moshe")),
+    LabelBox(["helllo world"*20] * 20),
 )
 
 app = conso.Application(r)

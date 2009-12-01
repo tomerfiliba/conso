@@ -156,8 +156,12 @@ def canonize_keystring(text):
     
     attrs = text.split()
     i = text.rfind(" ")
-    attrs = text[:i].split()
-    name = text[i+1:].strip()
+    if i >= 0:
+        attrs = text[:i].split()
+        name = text[i+1:].strip()
+    else:
+        attrs = []
+        name = text
     
     flags = 0
     for attr in attrs:

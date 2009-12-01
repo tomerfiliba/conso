@@ -3,7 +3,6 @@ import itertools
 
 
 class LayoutInfo(object):
-    _counter = itertools.count()
     __slots__ = ["widget", "alignment", "priority", "order"]
     def __init__(self, widget, alignment = "first", priority = 100):
         self.widget = widget
@@ -122,15 +121,19 @@ class Layout(Widget):
             return True
         return False
 
-def HLayout(*widgets):
+def _layout(widgets, axis):
     widgets2 = [wgt if isinstance(wgt, LayoutInfo) else LayoutInfo(wgt) 
         for wgt in widgets]
-    return Layout(Layout.HORIZONTAL, widgets2)
+    counter = itertools.count()
+    for wi in widgets2:
+        wi.order = counter.next()
+    return Layout(axis, widgets2)
+
+def HLayout(*widgets):
+    return _layout(widgets, Layout.HORIZONTAL)
 
 def VLayout(*widgets):
-    widgets2 = [wgt if isinstance(wgt, LayoutInfo) else LayoutInfo(wgt) 
-        for wgt in widgets]
-    return Layout(Layout.VERTICAL, widgets2)
+    return _layout(widgets, Layout.VERTICAL)
 
 
 
