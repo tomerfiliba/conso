@@ -17,10 +17,10 @@ r = VLayout(
     LayoutInfo(Frame("the list",
         ListBox(SimpleListModel([TextEntry("foo%d" % (i,)) for i in range(30)])),
     )),
-    #LayoutInfo(HLayout(
-    #    Button("? Help", None),
-    #    Button("Ctrl Q Quit", g),
-    #)),
+    LayoutInfo(HLayout(
+        Button("? Help", None),
+        Button("Ctrl Q Quit", g),
+    )),
     LayoutInfo(TextEntry("moshe")),
     LabelBox(["helllo world"*20] * 20),
 )

@@ -117,38 +117,37 @@ class ListBox(Widget):
         self.selected_index = 0
         self.hor_offset = 0
         self.is_selected_focused = False
+        self.remodelling_required = True
     def get_min_size(self, pwidth, pheight):
         return (5, 2)
     def get_desired_size(self, pwidth, pheight):
         return (pwidth, pheight)
     def remodel(self, canvas):
         self.canvas = canvas
+        self.remodelling_required = True
     def render(self, style, focused = False, highlight = False):
         if self.selected_index < self.start_index or self.selected_index > self.last_index:
             self.last_index = None
             self.start_index = self.selected_index
-        
-        #self.canvas.draw_vline(0, 0, char = self.canvas.LEFT_HALF_BLOCK)
-        #self.canvas.write(0, 0, u"\u2191")
-        #self.canvas.write(0, self.canvas.height - 1, u"\u2193")
-        #self.canvas.draw_hline(2, self.canvas.height - 1, char = self.canvas.LOWER_HALF_BLOCK)
-        #self.canvas.write(1, self.canvas.height - 1, u"\u2190")
-        #self.canvas.write(self.canvas.width - 1, self.canvas.height - 1, u"\u2192")
 
         offy = 0
         i = self.start_index
+        self.remodelling_required = True
         while self.model.hasitem(i) and offy < self.canvas.height:
             self.last_index  = i
             item = self.model.getitem(i)
             dw, dh = item.get_desired_size(self.canvas.width, self.canvas.height)
-            canvas2 = self.canvas.subcanvas(self.hor_offset, offy, dw, dh)
-            item.remodel(canvas2)
+            if self.remodelling_required:
+                canvas2 = self.canvas.subcanvas(self.hor_offset, offy, dw, dh)
+                item.remodel(canvas2)
             if i == self.selected_index:
                 item.render(style, focused = focused and self.is_selected_focused, highlight = focused)
             else:
                 item.render(style)
             i += 1
-            offy += canvas2.height
+            offy += dh
+        
+        self.remodelling_required = False
     
     def _on_key(self, evt):
         if self.is_selected_focused:
@@ -158,25 +157,32 @@ class ListBox(Widget):
         
         if evt == "esc" and self.is_selected_focused:
             self.is_selected_focused = False
+            #self.remodelling_required = True
             return True
         elif evt == "down":
             if self.model.hasitem(self.selected_index + 1):
                 self.is_selected_focused = False
                 self.selected_index += 1
+                self.remodelling_required = True
             return True
         elif evt == "up":
             if self.selected_index >= 1:
                 self.is_selected_focused = False
                 self.selected_index -= 1
+                self.remodelling_required = True
             return True
-        elif evt == "left":
+        elif evt == "left" and self.hor_offset < 0:
             self.hor_offset += 1
+            self.remodelling_required = True
             return True
         elif evt == "right":
             self.hor_offset -= 1
+            self.remodelling_required = True
             return True
         elif evt == "home":
-            self.selected_index = 0
+            if self.selected_index != 0:
+                self.selected_index = 0
+                self.remodelling_required = True
             return True
         elif evt == "end":
             # XXX how do we handle this?
@@ -186,18 +192,21 @@ class ListBox(Widget):
                 if not self.model.hasitem(self.selected_index + 1):
                     break
                 self.selected_index += 1
+                self.remodelling_required = True
             self.is_selected_focused = False
             return True
         elif evt == "pageup":
             if self.selected_index >= 1:
                 self.selected_index = max(0, self.selected_index - self.canvas.height)
                 self.is_selected_focused = False
+                self.remodelling_required = True
             return True
         elif evt == "enter":
             if self.model.hasitem(self.selected_index):
                 item = self.model.getitem(self.selected_index)
                 if item.is_interactive():
                     self.is_selected_focused = True
+                    #self.remodelling_required = True
             return True
         return False
 

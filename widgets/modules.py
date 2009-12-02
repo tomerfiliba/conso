@@ -102,48 +102,17 @@ class SimpleModule(Module):
         return False
 
 
-class InteractiveListBox(SimpleModule):
+class ListBoxModule(SimpleModule):
     def __init__(self, items = ()):
         self.items = list(items)
         SimpleModule.__init__(self, ListBox(SimpleListModel(self.items)))
 
     @action(title = "Delete", keys = ["delete"])
     def action_delete_selected(self):
-        if self.banner.is_set():
-            self.banner.clear()
+        if self.listbox.get_selected_widget():
+            del self.items[self.listbox.selected_index]
             return True
         return False
-
-class BookmarksList(InteractiveListBox):
-    @action(title = "Goto", keys = ["enter"])
-    def action_goto_selected(self):
-        pass
-
-    @action(title = "Rename", keys = ["r"])
-    def action_rename_selected(self):
-        pass
-
-#class FiltersList(InteractiveListBox):
-#    @action(title = "Toggle", keys = ["enter"])
-#    def action_goto_selected(self):
-#        pass
-#
-#    @action(title = "Highlight", keys = ["h"])
-#    def action_rename_selected(self):
-#        pass
-
-#class TraceList(SimpleModule):
-#    def __init__(self):
-#        SimpleModule.__init__(self, body)
-
-#class TraceReader(Module):
-#
-#    def __init__(self):
-#        pass
-#    
-#    @action(title = "", keys = [""])
-#    def 
-#    
 
 
 

@@ -98,6 +98,17 @@ class TextEntry(Widget):
                 return True
         return False
 
+class TextBox(Widget):
+    def __init__(self, lines = (), max_length = None):
+        self.lines = list(lines)
+        if not self.lines:
+            self.lines.append("")
+        self.max_length = max_length
+        self.start_offset = 0
+        self.end_offset = 0
+        self.selected_line = 0
+
+
 class Button(Widget):
     def __init__(self, text, callback):
         self.text = text

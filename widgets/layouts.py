@@ -60,9 +60,10 @@ class Layout(Widget):
                 if alloted < min_size:
                     del widget_infos[i]
                     break
-                output.append((wi.widget, alloted))
+                output.append((wi, alloted))
             else:
                 break
+        output.sort(key = lambda (wi, _): wi.order, reverse = True)
         return output[::-1]
     
     def get_selected_widget(self):
@@ -77,18 +78,19 @@ class Layout(Widget):
         self.canvas = canvas
         
         off = 0
-        for wgt, alloted in self._calc_visible_widgets(canvas):
+        for wi, alloted in self._calc_visible_widgets(canvas):
             if self.axis == self.HORIZONTAL:
                 canvas2 = canvas.subcanvas(off, 0, alloted, canvas.height)
             else:
                 canvas2 = canvas.subcanvas(0, off, canvas.width, alloted)
             
-            wgt.remodel(canvas2)
-            self.visible_widgets.append((wgt, canvas2.get_dims()))
+            wi.widget.remodel(canvas2)
+            self.visible_widgets.append((wi.widget, canvas2.get_dims()))
             off += alloted
         
         if self.visible_widgets:
-            self.selected_index = 0
+            self.selected_index = -1
+            self._on_key("tab")
         else:
             self.selected_index = None
     
