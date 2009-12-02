@@ -8,7 +8,7 @@ class LayoutInfo(object):
         self.widget = widget
         self.alignment = alignment
         self.priority = priority
-        self.order = self._counter.next()
+        self.order = 0
 
 class Layout(Widget):
     HORIZONTAL = 0
@@ -108,14 +108,24 @@ class Layout(Widget):
             next = "ctrl down"
             prev = "ctrl up"
         
-        if (evt == "tab" or evt == next) and self.selected_index <= len(self.visible_widgets) - 2:
-            self.selected_index += 1
-            self.is_selected_focused = True
-            return True
-        elif (evt == "shift tab" or evt == prev) and self.selected_index >= 1:
-            self.selected_index -= 1
-            self.is_selected_focused = True
-            return True
+        if evt == "tab" or evt == next:
+            orig = self.selected_index
+            while self.selected_index <= len(self.visible_widgets) - 2:
+                self.selected_index += 1
+                if self.get_selected_widget().is_interactive():
+                    self.is_selected_focused = True
+                    return True
+            self.selected_index = orig
+            return False
+        elif evt == "shift tab" or evt == prev:
+            orig = self.selected_index
+            while self.selected_index >= 1:
+                self.selected_index -= 1
+                if self.get_selected_widget().is_interactive():
+                    self.is_selected_focused = True
+                    return True
+            self.selected_index = orig
+            return False
         elif evt == "esc" and self.is_selected_focused:
             self.is_selected_focused = False
             return True

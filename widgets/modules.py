@@ -123,27 +123,27 @@ class BookmarksList(InteractiveListBox):
     def action_rename_selected(self):
         pass
 
-class FiltersList(InteractiveListBox):
-    @action(title = "Toggle", keys = ["enter"])
-    def action_goto_selected(self):
-        pass
+#class FiltersList(InteractiveListBox):
+#    @action(title = "Toggle", keys = ["enter"])
+#    def action_goto_selected(self):
+#        pass
+#
+#    @action(title = "Highlight", keys = ["h"])
+#    def action_rename_selected(self):
+#        pass
 
-    @action(title = "Highlight", keys = ["h"])
-    def action_rename_selected(self):
-        pass
+#class TraceList(SimpleModule):
+#    def __init__(self):
+#        SimpleModule.__init__(self, body)
 
-class TraceList(SimpleModule):
-    def __init__(self):
-        SimpleModule.__init__(self, body)
-
-class TraceReader(Module):
-
-    def __init__(self):
-        pass
-    
-    @action(title = "", keys = [""])
-    def 
-    
+#class TraceReader(Module):
+#
+#    def __init__(self):
+#        pass
+#    
+#    @action(title = "", keys = [""])
+#    def 
+#    
 
 
 

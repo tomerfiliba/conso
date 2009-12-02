@@ -202,6 +202,45 @@ class ListBox(Widget):
         return False
 
 
+class StubWidget(Widget):
+    def __init__(self, body = None):
+        self.body = body
+    def set(self, body):
+        if self.body:
+            raise ValueError("already set; call unset first")
+        self.body = body
+    def unset(self):
+        self.body = None
+    def is_set(self):
+        return self.body is not None
+    
+    def is_interactive(self):
+        if not self.body:
+            return False
+        return self.body.is_interactive()
+    def get_min_size(self, pwidth, pheight):
+        if not self.body:
+            return (0, 0)
+        return self.body.get_min_size(pwidth, pheight)
+    def get_desired_size(self, pwidth, pheight):
+        if not self.body:
+            return (0, 0)
+        return self.body.get_desired_size(pwidth, pheight)
+    def remodel(self, canvas):
+        if not self.body:
+            return
+        self.body.remodel(canvas)
+    def render(self, style, focused = False, highlight = False):
+        if not self.body:
+            return
+        self.body.render(style, focused = focused, highlight = highlight)
+    def on_event(self, evt):
+        if self.body:
+            return self.body.on_event(evt)
+        else:
+            return False
+    
+
 #class ComboBox(Widget):
 #    pass
 
