@@ -120,8 +120,8 @@ class Button(Widget):
     def get_desired_size(self, pwidth, pheight):
         return (len(self.text) + 2, 1)
     def render(self, style, focused = False, highlight = True):
-        text = u"\u258C%s\u2590" % (self.text[:self.canvas.width-2],)
-        self.canvas.write(0, 0, text, fg = "yellow" if focused else None)
+        text = u"<%s>" % (self.text[:self.canvas.width-2],)
+        self.canvas.write(0, 0, text, fg = "yellow" if focused else None, inversed = highlight)
     
     def _on_key(self, evt):
         if evt == "enter" or evt == "space":

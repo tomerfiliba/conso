@@ -108,18 +108,36 @@ class SimpleListModel(ListModel):
         if not isinstance(item, Widget):
             item = basic.Label(str(item))
         return item
+    
+    def append(self, item):
+        self.list.append(item)
+    def insert(self, index, item):
+        self.list.insert(index, item)
+    def pop(self, index = -1):
+        self.list.pop(index)
+    def __getitem__(self, index):
+        return self.list[index]
+    def __delitem__(self, index):
+        del self.list[index]
+    def __setitem__(self, index, item):
+        self.list[index] = item
 
 class ListBox(Widget):
-    def __init__(self, model):
+    HORIZONTAL = 0
+    VERTICAL = 1
+    
+    def __init__(self, axis, model):
+        assert isinstance(model, ListModel)
+        self.axis = axis
         self.model = model
         self.start_index = 0
         self.last_index = None
         self.selected_index = 0
-        self.hor_offset = 0
+        self.scrolled_offset = 0
         self.is_selected_focused = False
         self.remodelling_required = True
     def get_min_size(self, pwidth, pheight):
-        return (5, 2)
+        return (5, 1)
     def get_desired_size(self, pwidth, pheight):
         return (pwidth, pheight)
     def remodel(self, canvas):
@@ -130,22 +148,27 @@ class ListBox(Widget):
             self.last_index = None
             self.start_index = self.selected_index
 
-        offy = 0
+        off = 0
         i = self.start_index
         self.remodelling_required = True
-        while self.model.hasitem(i) and offy < self.canvas.height:
+        size = self.canvas.width if self.axis == self.HORIZONTAL else self.canvas.height
+        
+        while self.model.hasitem(i) and off < size:
             self.last_index  = i
             item = self.model.getitem(i)
             dw, dh = item.get_desired_size(self.canvas.width, self.canvas.height)
             if self.remodelling_required:
-                canvas2 = self.canvas.subcanvas(self.hor_offset, offy, dw, dh)
+                if self.axis == self.HORIZONTAL:
+                    canvas2 = self.canvas.subcanvas(off, self.scrolled_offset, dw, dh)
+                else:
+                    canvas2 = self.canvas.subcanvas(self.scrolled_offset, off, dw, dh)
                 item.remodel(canvas2)
             if i == self.selected_index:
                 item.render(style, focused = focused and self.is_selected_focused, highlight = focused)
             else:
                 item.render(style)
             i += 1
-            offy += dh
+            off += dw if self.axis == self.HORIZONTAL else dh
         
         self.remodelling_required = False
     
@@ -154,6 +177,16 @@ class ListBox(Widget):
             item = self.model.getitem(self.selected_index)
             if item.on_event(evt):
                 return True
+        
+        if self.axis == self.HORIZONTAL:
+            if evt == "down":
+                evt = "right"
+            elif evt == "up":
+                evt = "left"
+            elif evt == "right":
+                evt = "down"
+            elif evt == "up":
+                evt = "left"
         
         if evt == "esc" and self.is_selected_focused:
             self.is_selected_focused = False
@@ -171,12 +204,12 @@ class ListBox(Widget):
                 self.selected_index -= 1
                 self.remodelling_required = True
             return True
-        elif evt == "left" and self.hor_offset < 0:
-            self.hor_offset += 1
+        elif evt == "left" and self.scrolled_offset < 0:
+            self.scrolled_offset += 1
             self.remodelling_required = True
             return True
         elif evt == "right":
-            self.hor_offset -= 1
+            self.scrolled_offset -= 1
             self.remodelling_required = True
             return True
         elif evt == "home":
@@ -209,6 +242,13 @@ class ListBox(Widget):
                     #self.remodelling_required = True
             return True
         return False
+
+
+def HListBox(model):
+    return ListBox(ListBox.HORIZONTAL, model)
+
+def VListBox(model):
+    return ListBox(ListBox.VERTICAL, model)
 
 
 class StubWidget(Widget):

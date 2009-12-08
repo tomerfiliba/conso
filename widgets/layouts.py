@@ -114,7 +114,10 @@ class Layout(Widget):
             orig = self.selected_index
             while self.selected_index <= len(self.visible_widgets) - 2:
                 self.selected_index += 1
-                if self.get_selected_widget().is_interactive():
+                widget = self.get_selected_widget()
+                if not widget:
+                    break
+                if widget.is_interactive():
                     self.is_selected_focused = True
                     return True
             self.selected_index = orig
@@ -123,7 +126,10 @@ class Layout(Widget):
             orig = self.selected_index
             while self.selected_index >= 1:
                 self.selected_index -= 1
-                if self.get_selected_widget().is_interactive():
+                widget = self.get_selected_widget()
+                if not widget:
+                    break
+                if widget.is_interactive():
                     self.is_selected_focused = True
                     return True
             self.selected_index = orig

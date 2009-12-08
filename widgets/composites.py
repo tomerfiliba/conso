@@ -1,8 +1,8 @@
-from .containers import ListBox, SimpleListModel
+from .containers import VListBox, SimpleListModel
 
 
 def LabelBox(lines):
-    return ListBox(SimpleListModel(lines))
+    return VListBox(SimpleListModel(lines))
 
 
 

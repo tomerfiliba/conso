@@ -15,7 +15,7 @@ r = VLayout(
         ProgressBar(70),
     )),
     LayoutInfo(Frame("the list",
-        ListBox(SimpleListModel([TextEntry("foo%d" % (i,)) for i in range(30)])),
+        VListBox(SimpleListModel([TextEntry("foo%d" % (i,)) for i in range(30)])),
     )),
     LayoutInfo(HLayout(
         Button("? Help", None),

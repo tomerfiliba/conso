@@ -1,5 +1,8 @@
 import inspect
 from .base import Widget
+from . import containers
+from . import layouts
+from ..events import KeyEvent
 
 
 class ActionInfo(object):
@@ -71,11 +74,11 @@ class Module(Widget):
 class SimpleModule(Module):
     def __init__(self, body, header = None):
         self.body = body
-        self.banner = StubWidget()
-        self.header = header if header else StubWidget()
-        self.footer = StubWidget()
+        self.banner = containers.StubWidget()
+        self.header = header if header else containers.StubWidget()
+        self.footer = containers.StubWidget()
         Module.__init__(self, 
-            VLayout(
+            layouts.VLayout(
                 self.header,
                 self.body,
                 self.banner,
@@ -105,7 +108,7 @@ class SimpleModule(Module):
 class ListBoxModule(SimpleModule):
     def __init__(self, items = ()):
         self.items = list(items)
-        SimpleModule.__init__(self, ListBox(SimpleListModel(self.items)))
+        SimpleModule.__init__(self, containers.ListBox(containers.SimpleListModel(self.items)))
 
     @action(title = "Delete", keys = ["delete"])
     def action_delete_selected(self):
