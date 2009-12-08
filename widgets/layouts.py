@@ -38,33 +38,43 @@ class Layout(Widget):
             total_size = canvas.width
         else:
             total_size = canvas.height
-        
+
         widget_infos = sorted(self.widget_infos, key = lambda wi: wi.priority)
+        
         while True:
             output = []
             total_priorities = float(sum(wi.priority for wi in widget_infos))
-            accumulated_size = 0
+            used_size = 0
             for i, wi in enumerate(widget_infos):
-                alloted = int(round(total_size * wi.priority / total_priorities))
-                alloted = min(alloted, total_size - accumulated_size)
+                alloted = min(int(round(total_size * wi.priority / total_priorities)), total_size - used_size)
                 min_size = wi.widget.get_min_size(canvas.width, canvas.height)[self.axis]
                 max_size = wi.widget.get_desired_size(canvas.width, canvas.height)[self.axis]
-                if alloted > max_size:
-                    unused = alloted - max_size
-                    total_size += unused
-                    alloted -= unused
-
-                accumulated_size += alloted
-                assert accumulated_size <= total_size
-                
                 if alloted < min_size:
                     del widget_infos[i]
                     break
-                output.append((wi, alloted))
+                if alloted > max_size:
+                    alloted = max_size
+                used_size += alloted
+                assert used_size <= total_size
+                output.append((wi, min_size, max_size, alloted))
             else:
                 break
-        output.sort(key = lambda (wi, _): wi.order, reverse = True)
-        return output[::-1]
+        output.sort(key = lambda info: info[0].order)
+        
+        unused = total_size - used_size
+        can_expand = []
+        total_priorities = 0
+        for i, (wi, min_size, max_size, alloted) in enumerate(output):
+            if alloted < max_size:
+                can_expand.append(i)
+                total_priorities += wi.priority
+        for i in can_expand:
+            wi, min_size, max_size, alloted = output[i]
+            expansion = min(int((unused * wi.priority) / total_priorities), max_size - alloted)
+            alloted += expansion
+            output[i] = wi, min_size, max_size, alloted
+        
+        return [(wi, alloted) for wi, min_size, max_size, alloted in output]
     
     def get_selected_widget(self):
         if not self.is_selected_focused:
