@@ -179,14 +179,17 @@ class ListBox(Widget):
                 return True
         
         if self.axis == self.HORIZONTAL:
-            if evt == "down":
-                evt = "right"
-            elif evt == "up":
-                evt = "left"
-            elif evt == "right":
+            if evt == "right":
                 evt = "down"
+            
+            elif evt == "left":
+                evt = "up"
+            
             elif evt == "up":
                 evt = "left"
+            
+            elif evt == "down":
+                evt = "right"
         
         if evt == "esc" and self.is_selected_focused:
             self.is_selected_focused = False
@@ -211,6 +214,11 @@ class ListBox(Widget):
         elif evt == "right":
             self.scrolled_offset -= 1
             self.remodelling_required = True
+            return True
+        elif evt == "ctrl home":
+            if self.scrolled_offset != 0:
+                self.scrolled_offset = 0
+                self.remodelling_required = True
             return True
         elif evt == "home":
             if self.selected_index != 0:

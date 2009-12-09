@@ -5,7 +5,7 @@ from conso.widgets import *
 r = VLayout(
     VListBox(SimpleListModel([TextEntry("foo%d" % (i,)) for i in range(30)])),
     Label("helllo world"),
-    VListBox(SimpleListModel([TextEntry("foo%d" % (i,)) for i in range(30)])),
+    HListBox(SimpleListModel([TextEntry("foo%d" % (i,)) for i in range(30)])),
     Label("helllo sod"),
 )
 

@@ -1,139 +1,147 @@
+import itertools
 import inspect
-from .base import Widget
-from . import containers
-from . import layouts
 from ..events import KeyEvent
+from .base import Widget
+from .basic import Button
+from .containers import StubWidget, SimpleListModel, HListBox, VListBox
+from .layouts import VLayout, HLayout
 
 
 class ActionInfo(object):
-    def __init__(self, func, title = None, doc = None, keys = ()):
-        if not doc:
-            doc = inspect.getdoc(func)
-            if not doc:
-                doc = str(func)
-        if isinstance(keys, basestring):
-            keys = (keys,)
-        self.func = func
+    _counter = itertools.count()
+    
+    def __init__(self, func, title, doc, keys):
         self.title = title
         self.doc = doc
         self.keys = keys
-    
-    def __get__(self, obj, cls):
-        if not obj:
-            return self
-        else:
-            return lambda: self.func(obj)
-    
-    def __call__(self, obj):
-        return self.func(obj)
+        self.func = func
+        self.order = self._counter.next()
 
-
-def action(title = None, **kwargs):
+def action(title = None, doc = None, keys = ()):
     def deco(func):
-        return ActionInfo(func, title, **kwargs)
+        doc2 = doc
+        if not doc2:
+            doc2 = inspect.getdoc(func)
+        if not doc2:
+            doc2 = str(func)
+        return ActionInfo(func, title, doc, keys)
     return deco
+
 
 class Module(Widget):
     def __init__(self, root):
         self.root = root
         self._actions = self._get_actions()
         self._key_bindings = {}
-        for act in self._actions:
-            for key in act.keys:
-                self._key_bindings[KeyEvent.from_string(key)] = act
+        for action in self._actions:
+            for key in action.keys:
+                self._key_bindings[KeyEvent.from_string(key)] = action
     
-    @classmethod
-    def _get_actions(cls):
+    def _get_actions(self):
         actions = []
-        for name in dir(cls):
-            obj = getattr(cls, name, None)
-            if not isinstance(obj, ActionInfo):
-                continue
-            actions.append(obj)
+        for name in dir(self.__class__):
+            obj = getattr(self.__class__, name)
+            if isinstance(obj, ActionInfo):
+                actions.append(obj)
+        actions.sort(key = lambda action: action.order)
         return actions
-
+    
     def is_interactive(self):
         return self.root.is_interactive()
     def get_min_size(self, pwidth, pheight):
-        return self.root.get_min_size(pwidth, pheight)
+        self.root.get_min_size(pwidth, pheight)
     def get_desired_size(self, pwidth, pheight):
-        return self.root.get_desired_size(pwidth, pheight)
+        self.root.get_desired_size(pwidth, pheight)
     def remodel(self, canvas):
         self.root.remodel(canvas)
     def render(self, style, focused = False, highlight = False):
-        return self.root.render(style, focused = focused, highlight = highlight)
-    
+        self.root.render(style, focused = focused, highlight = highlight)
     def on_event(self, evt):
         if self.root.on_event(evt):
             return True
         if evt in self._key_bindings:
-            act = self._key_bindings[evt]
-            return act.func(self)
+            action = self._key_bindings[evt]
+            return action.func(self, evt)
         return False
 
-class SimpleModule(Module):
+class FramedModule(Module):
     def __init__(self, body, header = None):
         self.body = body
-        self.banner = containers.StubWidget()
-        self.header = header if header else containers.StubWidget()
-        self.footer = containers.StubWidget()
+        self.header = StubWidget(header)
+        footer_actions = SimpleListModel([])
+        self.footer = HListBox(footer_actions)
+        self.banner = StubWidget()
         Module.__init__(self, 
-            layouts.VLayout(
-                self.header,
-                self.body,
-                self.banner,
-                self.footer,
+            VLayout(
+                self.body, 
+                self.header, 
+                self.banner, 
+                self.footer
             )
         )
+        self._populate_footer(footer_actions)
+    
+    def _populate_footer(self, footer_actions):
+        for act in self._actions:
+            if act.title:
+                btn = Button(act.title, lambda inst: act.func(self, None))
+                footer_actions.append(btn)
+    
+    def _set_banner(self, widget):
+        self.banner.unset()
+        self.banner.set(widget)
+        self.root.select(3)
     
     def _get_help_message(self):
-        pass
+        lines = []
+        doc = inspect.getdoc(self)
+        if doc:
+            lines.extend(doc.splitlines())
+            lines.append("")
+        for action in self._actions:
+            lines.append("%s (%s): %s")
     
-    def _get_footer_line(self):
-        pass
+    @action(title = "Help", keys = ["?"])
+    def action_help(self, evt):
+        self._set_banner(LabelBox(self._get_help_message()))
     
-    @action("Help", keys = ["?"])
-    def action_help(self):
-        self.banner.set(LabelBox(self._get_help_message()))
-        return True
-
     @action(keys = ["esc"])
-    def action_clear_banner(self):
+    def action_unfocus(self, evt):
         if self.banner.is_set():
-            self.banner.clear()
+            self.banner.unset()
             return True
         return False
 
 
-class ListBoxModule(SimpleModule):
-    def __init__(self, items = ()):
-        self.items = list(items)
-        SimpleModule.__init__(self, containers.ListBox(containers.SimpleListModel(self.items)))
-
-    @action(title = "Delete", keys = ["delete"])
-    def action_delete_selected(self):
-        if self.listbox.get_selected_widget():
-            del self.items[self.listbox.selected_index]
-            return True
-        return False
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+class ListModule(FramedModule):
+    def __init__(self, items = (), header = None):
+        self.model = SimpleListModel(items)
+        FramedModule.__init__(self, VListBox(self.model), header = None)
+    
+    def append(self, item):
+        self.model.append(item)
+    def insert(self, index, item):
+        self.model.insert(index, item)
+    def pop(self, index = -1):
+        self.model.pop(index)
+    def __getitem__(self, index):
+        return self.model[index]
+    def __delitem__(self, index):
+        del self.model[index]
+    def __setitem__(self, index, value):
+        self.model[index] = value
+    
+    def get_selected_index(self):
+        if self.model.hasitem(self.body.selected_index):
+            return self.body.selected_index
+        else:
+            return -1
+    
+    @action("Delete", keys = ["del"])
+    def action_delete_selected(self, evt):
+        index = self.get_selected_index()
+        if index >= 0:
+            del self[index]
 
 
 
