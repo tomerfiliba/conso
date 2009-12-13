@@ -137,11 +137,21 @@ class ListModule(FramedModule):
         else:
             return -1
     
+    def set_selected_index(self, index):
+        if index < 0:
+            index = 0
+        if self.model.hasitem(index):
+            self.body.selected_index = index
+        else:
+            pass
+    
     @action("Delete", keys = ["del"])
     def action_delete_selected(self, evt):
         index = self.get_selected_index()
         if index >= 0:
             del self[index]
+        if not self.model.hasitem(index) and index >= 1:
+            self.set_selected_index(index - 1)
 
 
 

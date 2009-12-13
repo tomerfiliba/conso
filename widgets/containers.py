@@ -99,8 +99,8 @@ class ListModel(object):
 
 class SimpleListModel(ListModel):
     __slots__ = ["list"]
-    def __init__(self, list):
-        self.list = list
+    def __init__(self, seq):
+        self.list = list(seq)
     def hasitem(self, index):
         return index >= 0 and index < len(self.list)
     def getitem(self, index):
@@ -126,20 +126,37 @@ class ListBox(Widget):
     HORIZONTAL = 0
     VERTICAL = 1
     
-    def __init__(self, axis, model):
+    def __init__(self, axis, model, allow_scroll = False, auto_focus = False):
         assert isinstance(model, ListModel)
         self.axis = axis
         self.model = model
         self.start_index = 0
         self.last_index = None
+        self.auto_focus = auto_focus
         self.selected_index = 0
         self.scrolled_offset = 0
-        self.is_selected_focused = False
+        self.allow_scroll = allow_scroll
+        self._is_selected_focused = False
         self.remodelling_required = True
+    
+    def _get_is_selected_focused(self):
+        return self.auto_focus or self._is_selected_focused
+    def _set_is_selected_focused(self, value):
+        self._is_selected_focused = value
+    is_selected_focused = property(_get_is_selected_focused, _set_is_selected_focused)
+    
     def get_min_size(self, pwidth, pheight):
         return (5, 1)
     def get_desired_size(self, pwidth, pheight):
-        return (pwidth, pheight)
+        if self.model.hasitem(self.start_index):
+            item = self.model.getitem(self.start_index)
+            dw, dh = item.get_desired_size(pwidth, pheight)
+            if self.axis == self.VERTICAL:
+                return (min(dw, pwidth), pheight)
+            else:
+                return (pwidth, min(dh, pheight))
+        else:
+            return self.get_min_size(pwidth, pheight)
     def remodel(self, canvas):
         self.canvas = canvas
         self.remodelling_required = True
@@ -168,7 +185,7 @@ class ListBox(Widget):
             else:
                 item.render(style)
             i += 1
-            off += dw if self.axis == self.HORIZONTAL else dh
+            off += (dw + 1) if self.axis == self.HORIZONTAL else dh
         
         self.remodelling_required = False
     
@@ -181,13 +198,10 @@ class ListBox(Widget):
         if self.axis == self.HORIZONTAL:
             if evt == "right":
                 evt = "down"
-            
             elif evt == "left":
                 evt = "up"
-            
             elif evt == "up":
                 evt = "left"
-            
             elif evt == "down":
                 evt = "right"
         
@@ -207,15 +221,15 @@ class ListBox(Widget):
                 self.selected_index -= 1
                 self.remodelling_required = True
             return True
-        elif evt == "left" and self.scrolled_offset < 0:
+        elif evt == "left" and self.scrolled_offset < 0 and self.allow_scroll:
             self.scrolled_offset += 1
             self.remodelling_required = True
             return True
-        elif evt == "right":
+        elif evt == "right" and self.allow_scroll:
             self.scrolled_offset -= 1
             self.remodelling_required = True
             return True
-        elif evt == "ctrl home":
+        elif evt == "ctrl home" and self.allow_scroll:
             if self.scrolled_offset != 0:
                 self.scrolled_offset = 0
                 self.remodelling_required = True
@@ -252,11 +266,11 @@ class ListBox(Widget):
         return False
 
 
-def HListBox(model):
-    return ListBox(ListBox.HORIZONTAL, model)
+def HListBox(model, **kwargs):
+    return ListBox(ListBox.HORIZONTAL, model, **kwargs)
 
-def VListBox(model):
-    return ListBox(ListBox.VERTICAL, model)
+def VListBox(model, **kwargs):
+    return ListBox(ListBox.VERTICAL, model, **kwargs)
 
 
 class StubWidget(Widget):
