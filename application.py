@@ -250,7 +250,14 @@ class CliApplication(object):
 
     
 class Application(CliApplication):
-    def __init__(self, root, style = {}):
+    DEFAULT_STYLE = dict(
+        text_color = None,
+        highlight_color = None,
+        borders_color = None,
+        button_color = "blue",
+    )
+    
+    def __init__(self, root, style = DEFAULT_STYLE):
         CliApplication.__init__(self)
         self.root = root
         self.style = style

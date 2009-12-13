@@ -28,12 +28,6 @@ class Widget(object):
         return False
 
 
-style = dict(
-    text_color = None,
-    highlight_color = None,
-    borders_color = None,
-    button_color = "blue",
-)
 
 
 
