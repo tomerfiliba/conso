@@ -197,6 +197,17 @@ class Terminal(object):
             data.append(buf)
         return "".join(data)
 
+    @staticmethod
+    def _reexec_in_terminal():
+        os.execl("/usr/bin/gnome-terminal", "-t", "python shell", "-x", 
+            "/usr/bin/python", "-i", *sys.argv)
+        #terminals = [("gnome-terminal", "-t", "-x"), ("xterm", "-title", "-e")]
+        #for term, title, cmd in terminals:
+        #    binary = os.popen("which " + term).read().strip()
+        #    if binary:
+        #        os.execl(binary, cmd, "/usr/bin/python", "-i", *sys.argv)
+        #raise OSError("could not exec any terminal emulator")
+
     #=========================================================================
     # APIs
     #=========================================================================
@@ -205,8 +216,7 @@ class Terminal(object):
             raise ValueError("already initialized")
         if not os.isatty(self.fd):
             if self._exec_in_tty:
-                os.execl("/usr/bin/gnome-terminal", "-t", "python shell", "-x", 
-                    "/usr/bin/python", "-i", *sys.argv)
+                self._reexec_in_terminal()
             else:
                 raise ValueError("fd must be a tty")
 

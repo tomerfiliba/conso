@@ -23,10 +23,39 @@ class FiltersModule(widgets.ListModule):
         return True
 
 
+class InputModule(widgets.FramedModule):
+    def __init__(self, message, text = ""):
+        self.text = TextEntry(text)
+        widgets.FramedModule.__init__(self,
+            VLayout(Label(message), self.text)
+        )
+
+class FunctionSearch(InputModule):
+    def __init__(self):
+        InputModule.__init__(self, "Enter function name (may be partial)")
+    
+    @widgets.action(title = "Forward", keys = ["enter", "f"])
+    def action_search_fwd(self, evt):
+        pass
+
+    @widgets.action(title = "Backward", keys = ["shift enter", "b"])
+    def action_search_fwd(self, evt):
+        pass
+
+
+class TimeSearch(InputModule):
+    def __init__(self):
+        InputModule.__init__(self, "Enter time ([dd:]hh:mm:ss)")
+    
+    @widgets.action(title = "Jump", keys = ["enter", "ctrl j"])
+    def action_goto_time(self, evt):
+        pass
+
+
 class TraceReaderModule(widgets.FramedModule):
     def __init__(self):
-        self.bookmarks_mod = BookmarksModule(["hello"] * 30)
-        self.filters_mod = FiltersModule(["foobar"] * 30)
+        self.bookmarks_mod = BookmarksModule([widgets.TextEntry("hello%d" % i) for i in range(30)])
+        self.filters_mod = FiltersModule([widgets.TextEntry("foobar%d" % i) for i in range(30)])
         widgets.FramedModule.__init__(self,
             widgets.HLayout(
                 widgets.LayoutInfo(
@@ -48,11 +77,11 @@ class TraceReaderModule(widgets.FramedModule):
             )
         )
 
-    @widgets.action(title = "Bookmark", keys = ["b"])
+    @widgets.action(title = "Add Bookmark", keys = ["b"])
     def action_add_bookmark(self, evt):
         return True
 
-    @widgets.action(title = "Filter", keys = ["f"])
+    @widgets.action(title = "Add Filter", keys = ["f"])
     def action_add_filter(self, evt):
         return True
 
@@ -63,6 +92,15 @@ class TraceReaderModule(widgets.FramedModule):
     @widgets.action(title = "Go to Time", keys = ["g"])
     def action_goto_time(self, evt):
         return True
+    
+    @widgets.action(keys = ["ctrl b"])
+    def action_select_bookmarks_module(self, evt):
+        pass
+
+    @widgets.action(keys = ["ctrl f"])
+    def action_select_filters_module(self, evt):
+        pass
+
 
 
 
