@@ -3,7 +3,8 @@ from . import basic
 
 
 class Frame(Widget):
-    def __init__(self, title, body):
+    __slots__ = ["title", "body"]
+    def __init__(self, body, title = ""):
         self.title = title
         self.body = body
     def is_interactive(self):
@@ -20,8 +21,10 @@ class Frame(Widget):
         self.canvas = canvas
         self.body.remodel(canvas.subcanvas(1, 1, canvas.width-2, canvas.height-2))
     def render(self, style, focused = False, highlight = False):
-        self.canvas.draw_border()
-        self.canvas.write(1,0,self.title[:self.canvas.width-2])
+        self.canvas.draw_border(
+            fg = style.frame_border_color_focused if focused else style.frame_border_color)
+        self.canvas.write(1,0,self.title[:self.canvas.width-2], 
+            fg = style.frame_title_color_focused if focused else style.frame_title_color)
         self.body.render(style, focused = focused)
     def on_event(self, evt):
         return self.body.on_event(evt)
@@ -243,8 +246,9 @@ class ListBox(Widget):
             # XXX how do we handle this?
             return True
         elif evt == "pagedown":
-            for i in range(1, self.canvas.height):
-                if not self.model.hasitem(self.selected_index + 1):
+            for i in range(0, self.canvas.height):
+                if not self.model.hasitem(self.selected_index):
+                    self.selected_index -= 1
                     break
                 self.selected_index += 1
                 self.remodelling_required = True
@@ -274,6 +278,7 @@ def VListBox(model, **kwargs):
 
 
 class StubBox(Widget):
+    __slots__ = ["body"]
     def __init__(self, body = None):
         self.body = body
     def set(self, body):

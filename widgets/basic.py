@@ -30,19 +30,10 @@ class LabelBox(Widget):
     def remodel(self, canvas):
         self.canvas = canvas
     def render(self, style, focused = False, highlight = False):
-        offy = 0
-        for y in range(self.canvas.height):
-            self.canvas.write(0, y, self.canvas.LEFT_HALF_BLOCK, 
-                fg = style.labelbox_border_color_focused if focused else style.labelbox_border_color,
-                inversed = highlight)
-            self.canvas.write(self.canvas.width-1, y, self.canvas.RIGHT_HALF_BLOCK, 
-                fg = style.labelbox_border_color_focused if focused else style.labelbox_border_color,
-                inversed = highlight)
-        for i in range(self.line_index, len(self.lines)):
-            text = self.lines[i][self.scroll_x:self.scroll_x+self.canvas.width-2]
-            self.canvas.write(1, offy, text, fg = style.labelbox_text_color, 
+        for y, line in enumerate(self.lines[self.line_index:self.line_index+self.canvas.height]):
+            text = line[self.scroll_x:self.scroll_x+self.canvas.width]
+            self.canvas.write(0, y, text, fg = style.labelbox_text_color, 
                 bg = style.labelbox_bg_color)
-            offy += 1
 
     def _on_key(self, evt):
         if evt == "home":
@@ -50,15 +41,19 @@ class LabelBox(Widget):
             self.line_index = 0
             return True
         if evt == "end":
-            self.line_index = min(len(self.lines) - 1, 0)
+            self.line_index = max(len(self.lines) - 1, 0)
             return True
         elif evt == "up":
-            if self.line_index >= 1:
-                self.line_index -= 1
+            self.line_index = max(0, self.line_index - 1)
             return True
         elif evt == "down":
-            if self.line_index <= len(self.lines) - 2:
-                self.line_index += 1
+            self.line_index = min(len(self.lines) - 1, self.line_index + 1)
+            return True
+        elif evt == "pagedown":
+            self.line_index = min(len(self.lines) - 1, self.line_index + self.canvas.height)
+            return True
+        elif evt == "pageup":
+            self.line_index = max(0, self.line_index - self.canvas.height)
             return True
         elif evt == "right":
             self.scroll_x += 1

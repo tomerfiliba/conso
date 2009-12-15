@@ -11,7 +11,11 @@ class Style(object):
     __slots__ = ["_elements", "_values"]
     
     def __init__(self, **elements):
+        for k, v in elements.iteritems():
+            if v.fallback and v.fallback not in elements:
+                raise ValueError("nonexisting fallback key for %r: %r" % (k, v.fallback))
         object.__setattr__(self, "_elements", elements)
+        
     
     def __str__(self):
         elems = "\n    ".join(sorted("%s: %r" % (key, self[key]) for key in self._elements))
@@ -59,8 +63,6 @@ default_style = Style(
     
     labelbox_text_color = StyleElement(fallback = "label_text_color"),
     labelbox_bg_color = StyleElement(fallback = "label_bg_color"),
-    labelbox_border_color = StyleElement(fallback = "border_color"),
-    labelbox_border_color_focused = StyleElement(fallback = "border_color_focused"),
     
     button_text_color = StyleElement(fallback = "text_color"),
     button_text_color_focused = StyleElement(fallback = "text_color_focused"),
@@ -69,6 +71,11 @@ default_style = Style(
     textentry_text_color = StyleElement(fallback = "text_color"),
     textentry_text_color_focused = StyleElement(fallback = "text_color_focused"),
     textentry_bg_color = StyleElement(fallback = "bg_color"),
+    
+    frame_title_color = StyleElement(fallback = "text_color"),
+    frame_title_color_focused = StyleElement(fallback = "text_color_focused"),
+    frame_border_color = StyleElement(fallback = "border_color"),
+    frame_border_color_focused = StyleElement(fallback = "border_color_focused"),
 )
 
 

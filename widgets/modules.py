@@ -3,7 +3,8 @@ import inspect
 from ..events import KeyEvent
 from .base import Widget
 from .basic import Button, LabelBox
-from .containers import StubBox, SimpleListModel, HListBox, VListBox, BoundingBox
+from .containers import StubBox, BoundingBox, Frame
+from .containers import SimpleListModel, HListBox, VListBox
 from .layouts import VLayout, HLayout
 
 
@@ -24,7 +25,7 @@ def action(title = None, doc = None, keys = ()):
             doc2 = inspect.getdoc(func)
         if not doc2:
             doc2 = str(func)
-        return ActionInfo(func, title, doc, keys)
+        return ActionInfo(func, title, doc2, keys)
     return deco
 
 
@@ -49,9 +50,9 @@ class Module(Widget):
     def is_interactive(self):
         return self.root.is_interactive()
     def get_min_size(self, pwidth, pheight):
-        self.root.get_min_size(pwidth, pheight)
+        return self.root.get_min_size(pwidth, pheight)
     def get_desired_size(self, pwidth, pheight):
-        self.root.get_desired_size(pwidth, pheight)
+        return self.root.get_desired_size(pwidth, pheight)
     def remodel(self, canvas):
         self.root.remodel(canvas)
     def render(self, style, focused = False, highlight = False):
@@ -91,7 +92,12 @@ class FramedModule(Module):
         self.banner.unset()
         self.banner.set(widget)
         self.root.remodel()
-        #self.root.select(3)
+        self.root.selected_index = 2
+    
+    def _hide_banner(self):
+        self.banner.unset()
+        self.root.remodel()
+        self.root.selected_index = 1
     
     def _get_help_message(self):
         lines = []
@@ -99,28 +105,35 @@ class FramedModule(Module):
         if doc:
             lines.extend(doc.splitlines())
             lines.append("")
+        
         for action in self._actions:
-            lines.append("%s [%s]: %s" % (action.title, ", ".join(action.keys), action.doc))
+            lines.append(" * %s [%s]: %s" % (action.title, ", ".join(action.keys), action.doc))
+        lines.sort()
         return lines * 10
     
     @action(title = "Help", keys = ["?"])
     def action_help(self, evt):
         """Display this help message, describing the different commands and key bindings"""
-        self._set_banner(LabelBox(self._get_help_message()))
+        self._set_banner(Frame(LabelBox(self._get_help_message()), "Help"))
+        return True
     
     @action(keys = ["esc"])
     def action_unfocus(self, evt):
         if self.banner.is_set():
-            self.banner.unset()
-            self.root.remodel()
+            self._hide_banner()
             return True
         return False
 
 
 class ListModule(FramedModule):
-    def __init__(self, items = (), header = None):
+    def __init__(self, items = (), title = None):
+        if title is None:
+            title = self.__class__.__name__
+            if title.lower().endswith("module"):
+                title = title[:-6]
         self.model = SimpleListModel(items)
-        FramedModule.__init__(self, VListBox(self.model), header = None)
+        self.vlist = VListBox(self.model)
+        FramedModule.__init__(self, Frame(self.vlist, title = title))
     
     def append(self, item):
         self.model.append(item)
@@ -136,8 +149,8 @@ class ListModule(FramedModule):
         self.model[index] = value
     
     def get_selected_index(self):
-        if self.model.hasitem(self.body.selected_index):
-            return self.body.selected_index
+        if self.model.hasitem(self.vlist.selected_index):
+            return self.vlist.selected_index
         else:
             return -1
     
@@ -145,7 +158,7 @@ class ListModule(FramedModule):
         if index < 0:
             index = 0
         if self.model.hasitem(index):
-            self.body.selected_index = index
+            self.vlist.selected_index = index
         else:
             pass
     
@@ -156,6 +169,7 @@ class ListModule(FramedModule):
             del self[index]
         if not self.model.hasitem(index) and index >= 1:
             self.set_selected_index(index - 1)
+        return True
 
 
 

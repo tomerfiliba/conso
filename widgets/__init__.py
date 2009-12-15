@@ -1,7 +1,6 @@
 from .base import Widget
-from .basic import Label, Button, TextEntry, ProgressBar
+from .basic import Label, LabelBox, Button, TextEntry, ProgressBar
 from .containers import TabBox, Frame, StubBox, BoundingBox
 from .containers import HListBox, VListBox, ListModel, SimpleListModel
 from .layouts import HLayout, VLayout, LayoutInfo
-#from .composites import LabelBox
 from .modules import Module, action, FramedModule, ListModule

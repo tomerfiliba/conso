@@ -115,14 +115,7 @@ class Layout(Widget):
         if sw and sw.on_event(evt):
             return True
         
-        if self.axis == self.HORIZONTAL:
-            next = "ctrl right"
-            prev = "ctrl left"
-        else:
-            next = "ctrl down"
-            prev = "ctrl up"
-        
-        if evt == "tab" or evt == next:
+        if evt == "tab":
             orig = self.selected_index
             while self.selected_index <= len(self.visible_widgets) - 2:
                 self.selected_index += 1
@@ -134,7 +127,7 @@ class Layout(Widget):
                     return True
             self.selected_index = orig
             return False
-        elif evt == "shift tab" or evt == prev:
+        elif evt == "shift tab":
             orig = self.selected_index
             while self.selected_index >= 1:
                 self.selected_index -= 1

@@ -34,7 +34,7 @@ class Canvas(object):
         return self.offx, self.offy, self.width, self.height
     
     def write(self, x, y, text, **attrs):
-        if y < 0 or y > self.height and self.height is not None:
+        if y < 0 or y >= self.height and self.height is not None:
             return
         if x < 0:
             text = text[-x:]
@@ -70,9 +70,8 @@ class Canvas(object):
         self.write(x+w, y, self.RIGHT_UPPER_CORNER, **attrs)
         self.write(x, y+h, self.LEFT_LOWER_CORNER, **attrs)
         self.write(x+w, y+h, self.RIGHT_LOWER_CORNER, **attrs)
-    def draw_border(self):
-        self.draw_box(0, 0, self.width - 1, self.height - 1)
-        #return self.subcanvas(1, 1, self.width - 2, self.height - 2)
+    def draw_border(self, **attrs):
+        self.draw_box(0, 0, self.width - 1, self.height - 1, **attrs)
     
     def clear_line(self, y, **attrs):
         self.write(0, y, " " * self.width, **attrs)
