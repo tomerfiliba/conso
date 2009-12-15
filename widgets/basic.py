@@ -2,11 +2,9 @@ from .base import Widget
 
 
 class Label(Widget):
-    __slots__ = ["text", "fg", "bg"]
-    def __init__(self, text, fg = None, bg = None):
+    __slots__ = ["text"]
+    def __init__(self, text):
         self.text = text
-        self.fg = fg
-        self.bg = bg
     def get_min_size(self, pwidth, pheight):
         return (max(3, len(self.text)), 1)
     def get_desired_size(self, pwidth, pheight):
@@ -17,7 +15,59 @@ class Label(Widget):
         self.canvas = canvas
     def render(self, style, focused = False, highlight = False):
         padded = self.text + " " * (self.canvas.width - len(self.text))
-        self.canvas.write(0, 0, padded, fg = self.fg, bg = self.bg, inversed = highlight)
+        self.canvas.write(0, 0, padded, fg = style.label_text_color, bg = style.label_bg_color,
+            inversed = highlight)
+
+class LabelBox(Widget):
+    def __init__(self, lines):
+        self.lines = lines
+        self.scroll_x = 0
+        self.line_index = 0
+    def get_min_size(self, pwidth, pheight):
+        return (5, 2)
+    def get_desired_size(self, pwidth, pheight):
+        return (max(len(l) for l in self.lines)+2, len(self.lines))
+    def remodel(self, canvas):
+        self.canvas = canvas
+    def render(self, style, focused = False, highlight = False):
+        offy = 0
+        for y in range(self.canvas.height):
+            self.canvas.write(0, y, self.canvas.LEFT_HALF_BLOCK, 
+                fg = style.labelbox_border_color_focused if focused else style.labelbox_border_color,
+                inversed = highlight)
+            self.canvas.write(self.canvas.width-1, y, self.canvas.RIGHT_HALF_BLOCK, 
+                fg = style.labelbox_border_color_focused if focused else style.labelbox_border_color,
+                inversed = highlight)
+        for i in range(self.line_index, len(self.lines)):
+            text = self.lines[i][self.scroll_x:self.scroll_x+self.canvas.width-2]
+            self.canvas.write(1, offy, text, fg = style.labelbox_text_color, 
+                bg = style.labelbox_bg_color)
+            offy += 1
+
+    def _on_key(self, evt):
+        if evt == "home":
+            self.scroll_x = 0
+            self.line_index = 0
+            return True
+        if evt == "end":
+            self.line_index = min(len(self.lines) - 1, 0)
+            return True
+        elif evt == "up":
+            if self.line_index >= 1:
+                self.line_index -= 1
+            return True
+        elif evt == "down":
+            if self.line_index <= len(self.lines) - 2:
+                self.line_index += 1
+            return True
+        elif evt == "right":
+            self.scroll_x += 1
+            return True
+        elif evt == "left":
+            self.scroll_x = max(0, self.scroll_x - 1)
+            return True
+        return False
+
 
 class TextEntry(Widget):
     def __init__(self, text = "", max_length = None):
@@ -54,11 +104,16 @@ class TextEntry(Widget):
                 before = visible[:rel_cursor]
                 under = visible[rel_cursor]
                 after = visible[rel_cursor+1:]
-            self.canvas.write(0, 0, before, inversed = highlight)
-            self.canvas.write(len(before), 0, under, underlined = True, inversed = highlight)
-            self.canvas.write(len(before) + 1, 0, after, inversed = highlight)
+            
+            self.canvas.write(0, 0, before, fg = style.textentry_text_color_focused,
+                bg = style.textentry_bg_color, inversed = highlight)
+            self.canvas.write(len(before), 0, under, fg = style.textentry_text_color_focused,
+                bg = style.textentry_bg_color, underlined = True, inversed = highlight)
+            self.canvas.write(len(before) + 1, 0, after, fg = style.textentry_text_color_focused,
+                bg = style.textentry_bg_color, inversed = highlight)
         else:
-            self.canvas.write(0, 0, visible, inversed = highlight)
+            self.canvas.write(0, 0, visible, fg = style.textentry_text_color, 
+                bg = style.textentry_bg_color, inversed = highlight)
     
     def _on_key(self, evt):
         if evt == "left":
@@ -98,6 +153,7 @@ class TextEntry(Widget):
                 return True
         return False
 
+
 class TextBox(Widget):
     def __init__(self, lines = (), max_length = None):
         self.lines = list(lines)
@@ -121,8 +177,9 @@ class Button(Widget):
         return (len(self.text) + 2, 1)
     def render(self, style, focused = False, highlight = False):
         text = u"[%s]" % (self.text[:self.canvas.width-2],)
-        self.canvas.write(0, 0, text, fg = style["button_color"], 
-            bold = True, inversed = highlight)
+        self.canvas.write(0, 0, text, 
+            fg = style.button_text_color_focused if focused else style.button_text_color, 
+            bg = style.button_bg_color, bold = True, inversed = highlight)
     
     def _on_key(self, evt):
         if evt == "enter" or evt == "space":

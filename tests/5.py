@@ -15,7 +15,7 @@ class BookmarksModule(widgets.ListModule):
 
 
 if __name__ == "__main__":
-    r = BookmarksModule(["hello", "world"]*50)
+    r = BookmarksModule([widgets.TextEntry("hello %d" % (i,)) for i in range(50)])
     app = conso.Application(r)
     app.run(exit = False)
 

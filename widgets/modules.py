@@ -2,8 +2,8 @@ import itertools
 import inspect
 from ..events import KeyEvent
 from .base import Widget
-from .basic import Button
-from .containers import StubWidget, SimpleListModel, HListBox, VListBox
+from .basic import Button, LabelBox
+from .containers import StubBox, SimpleListModel, HListBox, VListBox, BoundingBox
 from .layouts import VLayout, HLayout
 
 
@@ -67,15 +67,15 @@ class Module(Widget):
 class FramedModule(Module):
     def __init__(self, body, header = None):
         self.body = body
-        self.header = StubWidget(header)
+        self.header = StubBox(header)
         footer_actions = SimpleListModel([])
-        self.footer = HListBox(footer_actions)
-        self.banner = StubWidget()
+        self.footer = HListBox(footer_actions, auto_focus = True)
+        self.banner = StubBox()
         Module.__init__(self, 
             VLayout(
-                self.body, 
-                self.header, 
-                self.banner, 
+                self.body,
+                self.header,
+                self.banner,
                 self.footer
             )
         )
@@ -84,13 +84,14 @@ class FramedModule(Module):
     def _populate_footer(self, footer_actions):
         for act in self._actions:
             if act.title:
-                btn = Button(act.title, lambda inst: act.func(self, None))
+                btn = Button(act.title, lambda inst, func = act.func: func(self, None))
                 footer_actions.append(btn)
     
     def _set_banner(self, widget):
         self.banner.unset()
         self.banner.set(widget)
-        self.root.select(3)
+        self.root.remodel()
+        #self.root.select(3)
     
     def _get_help_message(self):
         lines = []
@@ -99,16 +100,19 @@ class FramedModule(Module):
             lines.extend(doc.splitlines())
             lines.append("")
         for action in self._actions:
-            lines.append("%s (%s): %s")
+            lines.append("%s [%s]: %s" % (action.title, ", ".join(action.keys), action.doc))
+        return lines * 10
     
     @action(title = "Help", keys = ["?"])
     def action_help(self, evt):
+        """Display this help message, describing the different commands and key bindings"""
         self._set_banner(LabelBox(self._get_help_message()))
     
     @action(keys = ["esc"])
     def action_unfocus(self, evt):
         if self.banner.is_set():
             self.banner.unset()
+            self.root.remodel()
             return True
         return False
 

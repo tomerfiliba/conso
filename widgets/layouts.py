@@ -83,7 +83,9 @@ class Layout(Widget):
             return None
         return self.visible_widgets[self.selected_index][0]
     
-    def remodel(self, canvas):
+    def remodel(self, canvas = None):
+        if canvas is None:
+            canvas = self.canvas
         self.visible_widgets = []
         self.canvas = canvas
         
