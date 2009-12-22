@@ -15,9 +15,14 @@ class Layout(Widget):
         self.selected_index = -1
     
     def get_min_size(self, pwidth, pheight):
-        pass
+        sw = self.get_selected_widget()
+        if not sw:
+            return (0, 0)
+        else:
+            return sw.get_min_size(pwidth, pheight)
     def get_desired_size(self, pwidth, pheight):
         pass
+    
     def render(self, style, focused = False, highlight = False):
         sw = self.get_selected_widget()
         for wgt, pos in self.visible_widgets:
@@ -25,9 +30,15 @@ class Layout(Widget):
 
     def _calc_visible_widgets(self):
         output = []
+        
+        for info in sorted(self.layout_infos, key = lambda info: info.priority):
+            minw, minh = info.get_min_size(self.canvas.width, self.canvas.height)
+            maxw, maxh = info.get_desired_size(self.canvas.width, self.canvas.height)
+        
+        
         for info in self.layout_infos:
             pass
-        
+    
     def remodel(self, canvas = False):
         if not canvas:
             canvas = self.canvas
@@ -35,15 +46,29 @@ class Layout(Widget):
         self.canvas = canvas
         self.visible_widgets = self._calc_visible_widgets()
     
+    def get_selected_widget(self):
+        if self.selected_index >= len(self.visible_widgets):
+            self.selected_index = -1
+        if self.selected_index < 0:
+            return None
+        return self.visible_widgets[self.selected_index][0]
 
     def select(self, index):
         pass
     
     def _on_key(self, evt):
-        if evt == "esc":
+        sw = self.get_selected_widget()
+        if sw and sw.on_event(evt):
+            return True
+        
+        if evt == "esc" and sw:
             pass
         elif evt == "tab":
-            pass
+            if self.selected_index < 0 and self.visible_widgets:
+                self.selected_index = 0
+            #if self.selected_index <= self.visible_widgets:
+            #    self.selected_index = 0
+            
         elif evt == "shift tab":
             pass
     
