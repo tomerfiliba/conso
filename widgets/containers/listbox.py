@@ -1,96 +1,5 @@
-from .base import Widget
-from . import basic
-
-
-class Frame(Widget):
-    __slots__ = ["title", "body"]
-    def __init__(self, body, title = ""):
-        self.title = title
-        self.body = body
-    def is_interactive(self):
-        return self.body.is_interactive()
-    def get_min_size(self, pwidth, pheight):
-        w, h = self.body.get_min_size(pwidth-2, pheight-2)
-        return w+2, h+2
-    def get_desired_size(self, pwidth, pheight):
-        w, h = self.body.get_desired_size(pwidth-2, pheight-2)
-        return w+2, h+2
-    def get_priority(self):
-        return self.body.get_priority()
-    def remodel(self, canvas):
-        self.canvas = canvas
-        self.body.remodel(canvas.subcanvas(1, 1, canvas.width-2, canvas.height-2))
-    def render(self, style, focused = False, highlight = False):
-        self.canvas.draw_border(
-            fg = style.frame_border_color_focused if focused else style.frame_border_color)
-        self.canvas.write(1,0,self.title[:self.canvas.width-2], 
-            fg = style.frame_title_color_focused if focused else style.frame_title_color)
-        self.body.render(style, focused = focused)
-    def on_event(self, evt):
-        return self.body.on_event(evt)
-
-
-class TabInfo(object):
-    __slots__ = ["title", "widget"]
-    def __init__(self, title, widget):
-        self.title = title
-        self.widget = widget
-
-class TabBox(Widget):
-    def __init__(self, widgets, show_title = True, selected_index = 0):
-        self.show_title = show_title
-        self.tabs = tabs
-        self.selected_index = 0
-        self.is_selected_focused = False
-    
-    def get_selected_widget(self):
-        if selected_index < 0 or self.selected_index >= len(self.tabs):
-            return None
-        return self.tabs[self.selected_index].widget
-    def get_min_size(self, pwidth, pheight):
-        sw = self.get_selected_widget()
-        if not sw:
-            if self.show_title:
-                return (0, 0)
-            else:
-                return (0, 0)
-        if self.show_title:
-            w, h = sw.get_min_size(pwidth-2, pheight-3)
-            return w + 2, h + 4
-        else:
-            w, h = sw.get_min_size(pwidth, pheight)
-            return w, h
-    
-    def get_desired_size(self, pwidth, pheight):
-        return (pwidth, pheight)
-    
-    def remodel(self, canvas):
-        self.canvas = canvas
-        sw = self.get_selected_widget()
-        if sw:
-            sw.remodel(canvas)
-    
-    def render(self, style, focused = False, highlight = False):
-        if self.border:
-            self.canvas.draw_border()
-            self.title.render(style, highlight = highlight or focused)
-        self.body.render(style, focused = focused)
-    
-    def _on_key(self, evt):
-        sw = self.get_selected_widget()
-        if sw and sw.on_event(evt):
-            return True
-        
-        if evt == "esc" and self.is_selected_focused:
-            self.is_selected_focused = False
-            return True
-        elif evt == "tab":
-            self.is_selected_focused = True
-            return True
-        elif evt == "shift tab":
-            self.is_selected_focused = True
-            return True
-        return False
+from ..base import Widget
+from ..basic import Label
 
 
 class ListModel(object):
@@ -109,7 +18,7 @@ class SimpleListModel(ListModel):
     def getitem(self, index):
         item = self.list[index]
         if not isinstance(item, Widget):
-            item = basic.Label(str(item))
+            item = Label(str(item))
         return item
     
     def append(self, item):
@@ -275,85 +184,6 @@ def HListBox(model, **kwargs):
 
 def VListBox(model, **kwargs):
     return ListBox(ListBox.VERTICAL, model, **kwargs)
-
-
-class StubBox(Widget):
-    __slots__ = ["body"]
-    def __init__(self, body = None):
-        self.body = body
-    def set(self, body):
-        if self.body:
-            raise ValueError("already set; call unset first")
-        self.body = body
-    def unset(self):
-        self.body = None
-    def is_set(self):
-        return self.body is not None
-    
-    def is_interactive(self):
-        if not self.body:
-            return False
-        return self.body.is_interactive()
-    def get_min_size(self, pwidth, pheight):
-        if not self.body:
-            return (0, 0)
-        return self.body.get_min_size(pwidth, pheight)
-    def get_desired_size(self, pwidth, pheight):
-        if not self.body:
-            return (0, 0)
-        return self.body.get_desired_size(pwidth, pheight)
-    def remodel(self, canvas):
-        if not self.body:
-            return
-        self.body.remodel(canvas)
-    def render(self, style, focused = False, highlight = False):
-        if not self.body:
-            return
-        self.body.render(style, focused = focused, highlight = highlight)
-    def on_event(self, evt):
-        if self.body:
-            return self.body.on_event(evt)
-        else:
-            return False
-
-
-class BoundingBox(Widget):
-    def __init__(self, body, min_width = 0, min_height = 0, max_width = None, max_height = None):
-        self.body = body
-        self.min_width = min_width
-        self.min_height = min_height
-        self.max_width = max_width
-        self.max_height = max_height
-
-    def get_min_size(self, pwidth, pheight):
-        w, h = self.body.get_min_size(pwidth, pheight)
-        return (max(w, self.min_width), max(h, self.min_height))
-    def get_desired_size(self, pwidth, pheight):
-        w, h = self.body.get_desired_size(pwidth, pheight)
-        return (min(w, self.max_width), min(h, self.max_height))
-    
-    def is_interactive(self):
-        return self.body.is_interactive()
-    def remodel(self, canvas):
-        self.body.remodel(canvas)
-    def render(self, style, focused = False, highlight = False):
-        self.body.render(style, focused = focused, highlight = highlight)
-    def on_event(self, evt):
-        return self.body.on_event(evt)
-
-
-#class ComboBox(Widget):
-#    pass
-
-
-
-
-
-
-
-
-
-
 
 
 

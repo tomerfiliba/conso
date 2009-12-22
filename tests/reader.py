@@ -67,13 +67,10 @@ class TraceReaderModule(widgets.FramedModule):
                         title = "Traces"
                     ),
                 ),
-                widgets.BoundingBox(
-                    widgets.VLayout(
-                        self.bookmarks_mod,
-                        self.filters_mod,
-                    ),
-                    max_width = 25,
-                )
+                widgets.VLayout(
+                    self.bookmarks_mod,
+                    self.filters_mod,
+                ),
             )
         )
 

@@ -29,7 +29,7 @@ NoopCodec = NoopCodec()
 class Terminal(object):
     MAX_IO_CHUNK = 16000
     
-    def __init__(self, fd = sys.stdout, termtype = None, exec_in_tty = True, 
+    def __init__(self, fd = sys.stdout, termtype = None, exec_in_tty = False, 
             raw_mode = True, use_mouse = False):
         if hasattr(fd, "fileno"):
             fd.flush()
@@ -228,7 +228,6 @@ class Terminal(object):
         if self._use_mouse:
             self._enter_mouse_mode()
         self.clear_screen()
-        self.reset_attrs()
         self.hide_cursor()
         self._initialized = True
     
@@ -255,6 +254,7 @@ class Terminal(object):
         self._write("\x1b]2;%s\x07" % (title,))
 
     def clear_screen(self):
+        self.reset_attrs()
         self._write(self.CLEAR_SCREEN)
     
     def get_size(self):

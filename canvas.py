@@ -117,6 +117,12 @@ class RootCanvas(Canvas):
             x += 1
 
 
+class ScrolledCanvas(object):
+    def __init__(self, parent, offx, offy, width, height):
+        pass
+
+
+
 if __name__ == "__main__":
     from terminal import Terminal
     from events import KeyEvent, MouseEvent, ResizedEvent

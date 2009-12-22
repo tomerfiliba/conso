@@ -3,7 +3,7 @@ import inspect
 from ..events import KeyEvent
 from .base import Widget
 from .basic import Button, LabelBox
-from .containers import StubBox, BoundingBox, Frame
+from .containers import StubBox, Frame
 from .containers import SimpleListModel, HListBox, VListBox
 from .layouts import VLayout, HLayout
 
