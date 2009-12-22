@@ -23,11 +23,17 @@ class Layout(Widget):
         for wgt, pos in self.visible_widgets:
             wgt.render(style, focused = focused and wgt is sw)
 
+    def _calc_visible_widgets(self):
+        output = []
+        for info in self.layout_infos:
+            pass
+        
     def remodel(self, canvas = False):
         if not canvas:
             canvas = self.canvas
         
         self.canvas = canvas
+        self.visible_widgets = self._calc_visible_widgets()
     
 
     def select(self, index):
