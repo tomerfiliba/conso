@@ -104,7 +104,7 @@ class TraceReaderModule(widgets.FramedModule):
 
 if __name__ == "__main__":
     r = TraceReaderModule()
-    app = conso.Application(r)
+    app = conso.Application(r, capture_mouse = True)
     app.run(exit = False)
 
 

@@ -22,6 +22,12 @@ class Button(Widget):
             self.callback(self)
             return True
         return False
+    
+    def _on_mouse(self, evt):
+        if evt.btn == evt.BTN_RELEASE:
+            self.callback(self)
+            return True
+        return False
 
 
 class CheckButton(Widget):

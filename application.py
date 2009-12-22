@@ -5,34 +5,38 @@ from .cliapp import CliApplication
 
 
 class Application(CliApplication):
-    FORCE_QUIT_KEY = "ctrl c"
-    CAPTURE_MOUSE = False
-    EXEC_IN_TTY = True
-    
-    def __init__(self, root, style = default_style):
+    def __init__(self, root, style = default_style, capture_mouse = False, exec_in_tty = True, force_quit_key = "ctrl c"):
         CliApplication.__init__(self)
         self.root = root
         self.style = style
-        self.FORCE_QUIT_KEY = KeyEvent.from_string(self.FORCE_QUIT_KEY)
+        self.exec_in_tty = exec_in_tty
+        self.capture_mouse = capture_mouse
+        self.force_quit_key = KeyEvent.from_string(force_quit_key)
 
     def main(self):
         self._mainloop()
         return 0
 
     def _mainloop(self):
-        with Terminal(use_mouse = self.CAPTURE_MOUSE, exec_in_tty = self.EXEC_IN_TTY) as term:
+        with Terminal(use_mouse = self.capture_mouse, exec_in_tty = self.exec_in_tty) as term:
+            redraw = True
             while True:
                 evt = term.get_event()
                 if evt == ResizedEvent:
                     root_canvas = term.get_root_canvas()
                     self.root.remodel(root_canvas)
                     term.clear_screen()
-                elif evt == self.FORCE_QUIT_KEY:
+                    redraw = True
+                elif evt == self.force_quit_key:
                     break
-                else:
-                    self.root.on_event(evt)
-                self.root.render(self.style, focused = True)
-                root_canvas.commit()
+                elif self.root.on_event(evt):
+                    redraw = True
+                
+                if redraw:
+                    self.root.render(self.style, focused = True)
+                    root_canvas.commit()
+                    redraw = False
+            
             term.clear_screen()
 
 

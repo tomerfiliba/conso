@@ -85,6 +85,11 @@ class TextEntry(Widget):
                 return True
         return False
 
+    def _on_mouse(self, evt):
+        if evt.btn == evt.BTN_RELEASE:
+            self.cursor_offset = self.start_offset + evt.x
+            return True
+        return False
 
 class TextBox(Widget):
     def __init__(self, lines = (), max_length = None):
