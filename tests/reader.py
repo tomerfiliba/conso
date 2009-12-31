@@ -58,14 +58,12 @@ class TraceReaderModule(widgets.FramedModule):
         self.filters_mod = FiltersModule([widgets.TextEntry("foobar%d" % i) for i in range(30)])
         widgets.FramedModule.__init__(self,
             widgets.HLayout(
-                widgets.LayoutInfo(
-                    widgets.Frame(
-                        widgets.VListBox(
-                            widgets.SimpleListModel(["trace"*20]*100),
-                            allow_scroll = True,
-                        ),
-                        title = "Traces"
+                widgets.Frame(
+                    widgets.VListBox(
+                        widgets.SimpleListModel(["trace"*20]*100),
+                        allow_scroll = True,
                     ),
+                    title = "Traces"
                 ),
                 widgets.VLayout(
                     self.bookmarks_mod,

@@ -1,3 +1,2 @@
-from .layouts import Layout, LayoutInfo, HLayout, VLayout
+from .layout3 import HLayout, VLayout, Fixed, Scaled
 
- 
