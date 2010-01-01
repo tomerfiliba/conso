@@ -87,7 +87,9 @@ class TextEntry(Widget):
 
     def _on_mouse(self, evt):
         if evt.btn == evt.BTN_RELEASE:
-            self.cursor_offset = self.start_offset + evt.x
+            off = self.start_offset + evt.x
+            #end = len(self.text) - self.start_offset
+            self.cursor_offset = min(off, self.end_offset)
             return True
         return False
 
